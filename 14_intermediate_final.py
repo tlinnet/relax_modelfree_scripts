@@ -12,11 +12,11 @@ from specific_analyses.api import return_api
 ans=True
 while ans:
     print("")
-    print("  1: Do intermediate final run")
-    print("  2: Do final run")
+    print("  0: Do intermediate final run")
+    print("  1: Do final run")
 
-    ans=raw_input("What would you like to do? ") 
-    if ans=="1": 
+    ans=raw_input("What would you like to do?[0]:") or 0 
+    if ans=="0": 
         print("")
         print("------------------------------------------")
         print("|    Intermediate run                    |")
@@ -26,7 +26,7 @@ while ans:
         out_dir = "_intermediate_final"
         ans=False
 
-    elif ans=="2": 
+    elif ans=="1": 
         print("")
         print("------------------------------------------")
         print("|    Final run                           |")
