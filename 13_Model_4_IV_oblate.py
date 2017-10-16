@@ -22,7 +22,7 @@ pipe_bundle = pipes.get_bundle(pipe_name)
 # The diffusion model. Standard is 'Fully automated', which means: DIFF_MODEL=['local_tm', 'sphere', 'prolate', 'oblate', 'ellipsoid', 'final']
 # 'local_tm', 'sphere', ''prolate', 'oblate', 'ellipsoid', or 'final'
 #DIFF_MODEL = ['local_tm', 'sphere', 'prolate', 'oblate', 'ellipsoid', 'final']
-DIFF_MODEL = ['local_tm', 'oblate']
+DIFF_MODEL = ['oblate']
 
 # The grid search size (the number of increments per dimension).
 GRID_INC = 11
