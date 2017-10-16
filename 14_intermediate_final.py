@@ -436,4 +436,4 @@ if ans == 'y':
     file.close()
 
     # Save the state
-    state.save(state='results_collected.bz2', dir=write_results_dir, force=True)
+    #state.save(state='results_collected.bz2', dir=write_results_dir, force=True)
