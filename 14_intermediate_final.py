@@ -437,3 +437,25 @@ if ans == 'y':
 
     # Save the state
     #state.save(state='results_collected.bz2', dir=write_results_dir, force=True)
+
+###########################################################################################
+#Write python graphing file
+pytl = []
+pytl.append("import pandas as pd" + '\n') 
+pytl.append("import matplotlib.pyplot as plt" + '\n') 
+pytl.append("col_n = ['pipe_name', 'model', 'round_i', 'cdp_iter', 'chi2', 'tm', 'k', 'n', 'chi2_glob']" + '\n') 
+pytl.append("df = pd.read_csv('results_collected.txt', delim_whitespace=True, skiprows=1, names=col_n)" + '\n') 
+pytl.append("ax = df[df['model'] == 'sphere'].plot(x='round_i', y='chi2', color='DarkBlue', label='sphere')" + '\n') 
+pytl.append("df[df['model'] == 'prolate'].plot(x='round_i', y='chi2', ax=ax, color='DarkGreen', label='prolate')" + '\n') 
+pytl.append("df[df['model'] == 'oblate'].plot(x='round_i', y='chi2', ax=ax, color='DarkRed', label='oblate')" + '\n') 
+pytl.append("df[df['model'] == 'ellipsoid'].plot(x='round_i', y='chi2', ax=ax, color='DarkOrange', label='ellipsoid')" + '\n') 
+pytl.append("" + '\n') 
+pytl.append("plt.show()" + '\n') 
+
+# Define write out
+file_name = "results_collected.py"
+file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir, force=True)
+# Write the file.
+for line in pytl:
+    file.write(line)
+file.close()
