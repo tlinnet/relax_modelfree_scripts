@@ -138,3 +138,5 @@ scene F12
 @./result_06_check_intermediate/final/pymol/0_mod_rex.pml
 scene F12, store, rex: Chemical exchange relaxation (sigma_ex = Rex / omega**2), view=0
 
+# Save session
+save ./result_06_check_intermediate/final/pymol/pymol_session.pse
