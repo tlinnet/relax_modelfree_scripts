@@ -57,11 +57,11 @@ print("write_results dir is: %s"%write_results_dir)
 # Open the file for writing.
 file_name = "grace2images.py"
 write_results_dir_grace = write_results_dir + os.sep + 'final' + os.sep + 'grace'
-file_path = lib.io.get_file_path(file_name, write_results_dir_grace)
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_grace, force=True)
 # Write the file.
 lib.plotting.grace.script_grace2images(file=file)
 file.close()
+file_path = lib.io.get_file_path(file_name, write_results_dir_grace)
 os.chmod(file_path, stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
 ###########################################################################################
 
@@ -192,8 +192,7 @@ if ans == 'y':
      
     # Write file
     file_name = "results_collected_spin_info.txt"
-    file_path = lib.io.get_file_path(file_name, write_results_dir)
-    file = lib.io.open_write_file(file_path, force=True)
+    file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir, force=True)
      
     # Write the file.
     headings = ["mol", "resi", "resn", "element", "id", "model", "equation"]
@@ -359,7 +358,8 @@ file.close()
 ###########################################################################################
 #Get chi2 per iteration
 
-ans = raw_input("Should I the find chi2 value per iteraion?[n]:") or "n"
+#ans = raw_input("Should I the find chi2 value per iteraion?[n]:") or "n"
+ans = "y"
 if ans == 'y':
     dir_list = os.listdir(results_dir)
 
@@ -428,8 +428,7 @@ if ans == 'y':
 
     # Write file
     file_name = "results_collected.txt"
-    file_path = lib.io.get_file_path(file_name, write_results_dir)
-    file = lib.io.open_write_file(file_path, force=True)
+    file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir, force=True)
 
     # Write the file.
     headings = ["pipe_name", "model", "round_i", "cdp_iter", "chi2", "tm", "k_glob_Num_params", "n_glob_Num_data_sets", "chi2_glob"]
