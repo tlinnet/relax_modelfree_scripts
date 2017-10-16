@@ -7,6 +7,7 @@ from pipe_control import pipes
 import lib.io
 import lib.plotting.grace
 from pipe_control.mol_res_spin import spin_loop
+from specific_analyses.api import return_api
  
 ans=True
 while ans:
@@ -167,7 +168,6 @@ if ans == 'y':
 
 ###########################################################################################
 #Get more spin information
-
 if ans == 'y':
     # Get model
     value.write(param='model', file='model.txt', dir=write_results_dir, force=True)
@@ -199,3 +199,242 @@ if ans == 'y':
     headings = ["mol", "resi", "resn", "element", "id", "model", "equation"]
     lib.io.write_data(out=file, headings=headings, data=out_results)
     file.close()
+
+###########################################################################################
+#Write pymol file
+pyml = []
+pyml.append('# Start settings' + '\n') 
+pyml.append('reinitialize' + '\n')
+pyml.append('bg_color white' + '\n')
+pyml.append('set scene_buttons, 1' + '\n')
+pyml.append('' + '\n')
+pyml.append('# Load protein and set name' + '\n')
+pdb_file_name = cdp.structure.structural_data[0].mol[0].file_name
+pdb_file = pdb_file_name.split(".pdb")[0]
+pyml.append('load ../../../%s'%pdb_file_name + '\n')
+pyml.append("prot='prot'" + '\n')
+pyml.append('cmd.set_name("%s", prot)'%pdb_file + '\n')
+pyml.append('' + '\n')
+pyml.append('# Load tensor pdb' + '\n')
+pyml.append('load ../tensor.pdb' + '\n')
+pyml.append('' + '\n')
+pyml.append('#################################' + '\n')
+pyml.append('# Scene 1 :  Make default view' + '\n')
+pyml.append('#################################' + '\n')
+pyml.append('hide everything, prot' + '\n')
+pyml.append('show_as cartoon, prot' + '\n')
+pyml.append('zoom prot and polymer' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F1, store, load of data, view=1' + '\n')
+pyml.append('' + '\n')
+pyml.append('################################' + '\n')
+pyml.append("# Scenes: We will go through the order like this" + '\n')
+pyml.append("# 's2', 's2f', 's2s', 'amp_fast', 'amp_slow', 'te', 'tf', 'ts', 'time_fast', 'time_slow', 'rex'" + '\n')
+pyml.append('# s2: S2, the model-free generalised order parameter (S2 = S2f.S2s).' + '\n')
+pyml.append('# s2f: S2f, the faster motion model-free generalised order parameter.' + '\n')
+pyml.append('# s2s: S2s, the slower motion model-free generalised order parameter.' + '\n')
+pyml.append('# amp_fast: ' + '\n')
+pyml.append('# amp_slow: ' + '\n')
+pyml.append('# te: Single motion effective internal correlation time (seconds).' + '\n')
+pyml.append('# tf: Faster motion effective internal correlation time (seconds).' + '\n')
+pyml.append('# ts: Slower motion effective internal correlation time (seconds).' + '\n')
+pyml.append('# time_fast: ' + '\n')
+pyml.append('# time_slow:' + '\n')
+pyml.append('# rex: Chemical exchange relaxation (sigma_ex = Rex / omega**2). ' + '\n')
+pyml.append('' + '\n')
+pyml.append("modes = ['s2', 's2f', 's2s', 'amp_fast', 'amp_slow', 'te', 'tf', 'ts', 'time_fast', 'time_slow', 'rex']" + '\n')
+pyml.append('fdir = "./"' + '\n')
+pyml.append('python' + '\n')
+pyml.append('' + '\n')
+pyml.append('# File placement' + '\n')
+pyml.append('if True:' + '\n')
+pyml.append('    for i, mode in enumerate(modes):' + '\n')
+pyml.append('        # Make name' + '\n')
+pyml.append('        protn = "%s_%s" % (prot, mode)' + '\n')
+pyml.append('' + '\n')
+pyml.append('        # Loop over file lines' + '\n')
+pyml.append('        fname = fdir + "/%s.pml"%mode' + '\n')
+pyml.append('        fname_out = fdir + "/0_mod_%s.pml"%mode' + '\n')
+pyml.append('        f_out = open(fname_out, "w")' + '\n')
+pyml.append('        with open(fname) as f:' + '\n')
+pyml.append('            for line in f:' + '\n')
+pyml.append('                line_cmd = ""' + '\n')
+pyml.append('                # Add to end of line, depending on command' + '\n')
+pyml.append('                if line[0] == "\\n":' + '\n')
+pyml.append('                    line_add = ""' + '\n')
+pyml.append('                elif line[0:4] == "hide":' + '\n')
+pyml.append('                    line_add = " %s"%protn' + '\n')
+pyml.append('' + '\n')
+pyml.append('                # All not changed' + '\n')
+pyml.append('                elif line[0:8] == "bg_color":' + '\n')
+pyml.append('                    line_add = ""' + '\n')
+pyml.append('                elif line[0:9] == "set_color":' + '\n')
+pyml.append('                    line_add = ""' + '\n')
+pyml.append('                elif line[0:6] == "delete":' + '\n')
+pyml.append('                    line_add = ""' + '\n')
+pyml.append('' + '\n')
+pyml.append('                else:' + '\n')
+pyml.append('                    line_add =  " and %s"%protn' + '\n')
+pyml.append('                # Modify line' + '\n')
+pyml.append('                line_cmd = line.strip() + line_add + "\\n"' + '\n')
+pyml.append('' + '\n')
+pyml.append('                # Write the line' + '\n')
+pyml.append('                f_out.write(line_cmd)' + '\n')
+pyml.append('            f_out.close()' + '\n')
+pyml.append('python end ' + '\n')
+pyml.append('' + '\n')
+pyml.append('# Make pymol objects' + '\n')
+pyml.append('python' + '\n')
+pyml.append('for i, mode in enumerate(modes):' + '\n')
+pyml.append('    protn = "%s_%s" % (prot, mode)' + '\n')
+pyml.append('    cmd.copy(protn, prot)' + '\n')
+pyml.append('' + '\n')
+pyml.append('    cmd.scene("F1")' + '\n')
+pyml.append('    cmd.disable(prot)' + '\n')
+pyml.append('    cmd.enable(protn)' + '\n')
+pyml.append('    cmd.scene("F%i"%(i+2), "store", mode, view=0)' + '\n')
+pyml.append('python end' + '\n')
+pyml.append('' + '\n')
+pyml.append('#################################' + '\n')
+pyml.append('# Scenes' + '\n')
+pyml.append("# #modes = ['s2', 's2f', 's2s', 'amp_fast', 'amp_slow', 'te', 'tf', 'ts', 'time_fast', 'time_slow', 'rex']" + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F2' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_s2.pml' + '\n')
+pyml.append('scene F2, store, s2: the model-free generalised order parameter (S2 = S2f.S2s), view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F3' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_s2f.pml' + '\n')
+pyml.append('scene F3, store, s2f: the faster motion model-free generalised order parameter, view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F4' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_s2s.pml' + '\n')
+pyml.append('scene F4, store, s2s: the slower motion model-free generalised order parameter, view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F5' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_amp_fast.pml' + '\n')
+pyml.append('scene F5, store, amp_fast, view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F6' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_amp_slow.pml' + '\n')
+pyml.append('scene F6, store, amp_slow, view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F7' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_te.pml' + '\n')
+pyml.append('scene F7, store, te: Single motion effective internal correlation time (seconds), view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F8' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_tf.pml' + '\n')
+pyml.append('scene F8, store, tf: Faster motion effective internal correlation time (seconds), view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F9' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_ts.pml' + '\n')
+pyml.append('scene F9, store, ts: Slower motion effective internal correlation time (seconds), view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F10' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_time_fast.pml' + '\n')
+pyml.append('scene F10, store, time_fast, view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F11' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_time_slow.pml' + '\n')
+pyml.append('scene F11, store, time_slow, view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('scene F12' + '\n')
+pyml.append('@./result_06_check_intermediate/final/pymol/0_mod_rex.pml' + '\n')
+pyml.append('scene F12, store, rex: Chemical exchange relaxation (sigma_ex = Rex / omega**2), view=0' + '\n')
+pyml.append('' + '\n')
+pyml.append('# Save session' + '\n')
+pyml.append('save ./pymol_session.pse' + '\n')
+
+# Define write out
+file_name = "pymol.pml"
+write_results_dir_pyml = write_results_dir + os.sep + 'final' + os.sep + 'pymol'
+file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_pyml, force=True)
+# Write the file.
+for line in pyml:
+    file.write(line)
+file.close()
+
+
+###########################################################################################
+#Get chi2 per iteration
+
+ans = raw_input("Should I the find chi2 value per iteraion?[n]:") or "n"
+if ans == 'y':
+    dir_list = os.listdir(results_dir)
+
+    all_models = ['local_tm', 'sphere', 'prolate', 'oblate', 'ellipsoid']
+    opt_models = []
+    for model in all_models:
+        if model in dir_list:
+            opt_models.append(model)
+
+    # Loop over models MII to MV.
+    out_results = []
+    for model in ['sphere', 'prolate', 'oblate', 'ellipsoid']:
+        # Skip missing models.
+        if model not in opt_models:
+            continue
+        # Make the model dir
+        mdir = results_dir + os.sep + model
+        rdir = [ name for name in os.listdir(mdir) if os.path.isdir(os.path.join(mdir, name)) ]
+        rdirs = lib.io.sort_filenames(rdir)
+
+        # Loop over rounds
+        for rd in rdirs:
+            if "round_" in rd:
+                dir_model_round = mdir + os.sep + rd + os.sep + 'opt'
+                if os.path.isdir(dir_model_round):
+                    # Create pipe to read data
+                    pipe_name_rnd = "%s_%s" % (model, rd)
+                    pipe.create(pipe_name_rnd, 'mf', bundle="temp")
+                    results.read(file='results', dir=dir_model_round)
+
+                    # Get info
+                    round_i = rd.split("_")[-1]
+                    cdp_iter = str(cdp.iter)
+                    chi2 = str(cdp.chi2)
+                    tm = str(cdp.diff_tensor.tm)
+
+                    # Get the api to get number of parameters
+                    api = return_api(pipe_name=pipe_name)
+                    model_loop = api.model_loop
+                    model_desc = api.model_desc
+                    model_statistics = api.model_statistics
+
+                    for model_info in model_loop():
+                        desc = model_desc(model_info)
+                        # Num_params_(k)
+                        # Num_data_sets_(n)
+                        k_glob, n_glob, chi2_glob = model_statistics(model_info, global_stats=True)
+                        break
+
+                    k_glob = str(k_glob)
+                    n_glob = str(n_glob)
+                    chi2_glob = str(chi2_glob)
+
+                    # Append to results
+                    out_results.append([pipe_name_rnd, model, round_i, cdp_iter, chi2, tm, k_glob, n_glob, chi2_glob])
+                    print("\n# Data:")
+                    print(out_results[-1])
+
+    # Change back to original pipe
+    pipe.switch(pipe_name)
+    cdp.out_results = out_results
+
+    #print result
+    for res in out_results:
+        print res
+
+    # Write file
+    file_name = "results_collected.txt"
+    file_path = lib.io.get_file_path(file_name, write_results_dir)
+    file = lib.io.open_write_file(file_path, force=True)
+
+    # Write the file.
+    headings = ["pipe_name", "model", "round_i", "cdp_iter", "chi2", "tm", "k_glob_Num_params", "n_glob_Num_data_sets", "chi2_glob"]
+    lib.io.write_data(out=file, headings=headings, data=out_results)
+    file.close()
+
+    # Save the state
+    state.save(state='results_collected.bz2', dir=write_results_dir, force=True)

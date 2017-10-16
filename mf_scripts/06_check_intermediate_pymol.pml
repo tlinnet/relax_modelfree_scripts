@@ -35,8 +35,6 @@ scene F1, store, load of data, view=1
 # time_slow:
 # rex: Chemical exchange relaxation (sigma_ex = Rex / omega**2). 
 
-#modes = ['s2']
-#modes = ['s2', 's2f']
 modes = ['s2', 's2f', 's2s', 'amp_fast', 'amp_slow', 'te', 'tf', 'ts', 'time_fast', 'time_slow', 'rex']
 fdir = "./result_06_check_intermediate/final/pymol"
 
