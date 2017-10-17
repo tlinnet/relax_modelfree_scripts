@@ -92,7 +92,7 @@ print("\nThe params selected is: %s"%params_sel)
 ###########################################################################################
 #Write dx file
 file_name_dx = "%s_%s_%s_%s_%s_%s"%(pipe_dir_sel[1], sel_spin[1], sel_spin[2], params_sel[0], params_sel[1], params_sel[2])
-write_results_dir_dx = write_results_dir + os.sep + 'final' + os.sep + 'dx'
+write_results_dir_dx = write_results_dir + os.sep + 'dx'
 
 dxfl = []
 dxfl.append('pipe.create("%s_%s", "mf", bundle="temp")'%(pipe_dir_sel[1], "dx") + '\n') 
