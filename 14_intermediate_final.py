@@ -468,14 +468,14 @@ pytl.append("box = ax2.get_position()" + '\n')
 pytl.append("ax2.set_position([box.x0, box.y0, box.width * 0.8, box.height])" + '\n') 
 pytl.append("ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))" + '\n') 
 pytl.append("" + '\n')
-pytl.append("df[df['model'] == 'sphere'].plot(x='round_i', y='tm', ax=ax3, color='DarkBlue', label='sphere')" + '\n'
-pytl.append("df[df['model'] == 'prolate'].plot(x='round_i', y='tm', ax=ax3, color='DarkGreen', label='prolate')" + '\n'
-pytl.append("df[df['model'] == 'oblate'].plot(x='round_i', y='tm', ax=ax3, color='DarkRed', label='oblate')" + '\n'
-pytl.append("df[df['model'] == 'ellipsoid'].plot(x='round_i', y='tm', ax=ax3, color='DarkOrange', label='ellipsoid')" + '\n'
-pytl.append("ax3.set_title('tm:')" + '\n'
-pytl.append("box = ax3.get_position()" + '\n'
-pytl.append("ax3.set_position([box.x0, box.y0, box.width * 0.8, box.height])" + '\n'
-pytl.append("ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))" + '\n'
+pytl.append("df[df['model'] == 'sphere'].plot(x='round_i', y='tm', ax=ax3, color='DarkBlue', label='sphere')" + '\n') 
+pytl.append("df[df['model'] == 'prolate'].plot(x='round_i', y='tm', ax=ax3, color='DarkGreen', label='prolate')" + '\n') 
+pytl.append("df[df['model'] == 'oblate'].plot(x='round_i', y='tm', ax=ax3, color='DarkRed', label='oblate')" + '\n') 
+pytl.append("df[df['model'] == 'ellipsoid'].plot(x='round_i', y='tm', ax=ax3, color='DarkOrange', label='ellipsoid')" + '\n') 
+pytl.append("ax3.set_title('tm:')" + '\n') 
+pytl.append("box = ax3.get_position()" + '\n') 
+pytl.append("ax3.set_position([box.x0, box.y0, box.width * 0.8, box.height])" + '\n') 
+pytl.append("ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))" + '\n') 
 pytl.append("" + '\n') 
 pytl.append("" + '\n') 
 pytl.append("plt.show()" + '\n') 
