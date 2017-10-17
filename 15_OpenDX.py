@@ -43,52 +43,21 @@ print("Results dir is: %s"%results_dir)
 write_results_dir = os.getcwd() + os.sep + var+out_dir
 print("write_results dir is: %s"%write_results_dir)
 
-# Find last round file
-dir_list = os.listdir(results_dir)
+# Load from local_tm
+pipe_dir_local_tm = results_dir + os.sep + "local_tm" + os.sep + "aic"
+pipe_dir_final = write_results_dir + os.sep + "final"
+pipe_dir = [[pipe_dir_local_tm, "local_tm"], [pipe_dir_final, "final"] ]
 
-all_models = ['local_tm', 'sphere', 'prolate', 'oblate', 'ellipsoid']
-opt_models = []
-for model in all_models:
-    if model in dir_list:
-        opt_models.append(model)
+print("\nSelect which pipe to load:")
+print("0: local_tm pipe")
+print("1: final pipe")
+ans_pipe = raw_input("Select which pipe to load:[1]") or 1
+ans_pipe = int(ans_pipe)
+pipe_dir_sel = pipe_dir[ans_pipe]
+print("You selected: %s"%pipe_dir_sel)
 
-# Loop over models MII to MV.
-out_results = []
-i = 0
-for model in ['sphere', 'prolate', 'oblate', 'ellipsoid']:
-    # Skip missing models.
-    if model not in opt_models:
-        continue
-    out_results.append([model, "", "", ""]) 
-
-    # Make the model dir
-    mdir = results_dir + os.sep + model
-    rdir = [ name for name in os.listdir(mdir) if os.path.isdir(os.path.join(mdir, name)) ]
-    rdirs = lib.io.sort_filenames(rdir)
-
-    # Loop over rounds
-    for rd in rdirs:
-        if "round_" in rd:
-            dir_round = int(rd.split("_")[-1])
-            dir_model_round = mdir + os.sep + rd + os.sep + 'opt'
-            if os.path.isdir(dir_model_round):
-                out_results[i][1] = rd
-                out_results[i][2] = dir_round
-                out_results[i][3] = dir_model_round
-    i += 1
-
-print("\n###########")
-print("Select which pipe to load")
-for i, o in enumerate(out_results):
-    print("%s : %s"%(i, o[:2]))
-
-ans_i = raw_input("Select which pipe to load[0]:") or 0
-ans_i = int(ans_i)
-sel_pipe = out_results[ans_i]
-print("You selected: %s"%sel_pipe[:2])
-
-pipe.create("%s_%s"%(sel_pipe[0], sel_pipe[1]), 'mf', bundle="temp")
-results.read(file='results', dir=sel_pipe[3])
+pipe.create("%s_%s"%(pipe_dir_sel[1], "dx"), 'mf', bundle="temp")
+results.read(file='results', dir=pipe_dir_sel[0])
 
 # Loop over the spins, take 1 spin
 spin_res = []
@@ -96,7 +65,7 @@ i = 0
 print("\n###########")
 print("Select which #Nr spin to make dx map for")
 for c_s, c_s_mol, c_s_resi, c_s_resn, c_s_id in spin_loop(full_info=True, return_id=True, skip_desel=True):
-    spin_res.append([c_s_id, c_s_resi, c_s_resn, c_s.params])
+    spin_res.append([c_s_id, c_s_resi, c_s_resn, c_s.model, c_s.params])
     print("%s : %s"%(i, spin_res[-1]))
     i += 1
 
@@ -122,14 +91,12 @@ print("\nThe params selected is: %s"%params_sel)
 
 ###########################################################################################
 #Write dx file
-file_name_dx = "%s_%s_%s_%s_%s_%s_%s"%(sel_pipe[0], sel_pipe[1], sel_spin[1], sel_spin[2], params_sel[0], params_sel[1], params_sel[2])
+file_name_dx = "%s_%s_%s_%s_%s_%s"%(pipe_dir_sel[1], sel_spin[1], sel_spin[2], params_sel[0], params_sel[1], params_sel[2])
 write_results_dir_dx = write_results_dir + os.sep + 'final' + os.sep + 'dx'
 
 dxfl = []
-dxfl.append('pipe.create("%s_%s", "mf", bundle="temp")'%(sel_pipe[0], sel_pipe[1]) + '\n') 
-dxfl.append('results.read(file="results", dir="%s")'%(sel_pipe[3]) + '\n') 
-dxfl.append('' + '\n')
-dxfl.append('fix("all", fixed=True)' + '\n') 
+dxfl.append('pipe.create("%s_%s", "mf", bundle="temp")'%(pipe_dir_sel[1], "dx") + '\n') 
+dxfl.append('results.read(file="results", dir="%s")'%(pipe_dir_sel[0]) + '\n') 
 dxfl.append('' + '\n')
 dxfl.append('dx.map(params=%s, #The parameters to be mapped.'%(params_sel) + '\n') 
 dxfl.append('    map_type="Iso3D", #The type of map to create.' + '\n') 
