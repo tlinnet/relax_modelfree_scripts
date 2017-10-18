@@ -7,7 +7,7 @@ import lib.io
 import lib.plotting.grace
 
 # Get the directories in the folder
-dirs = [f for f in os.listdir(os.getcwd()) if os.path.isdir(f)]
+dirs = lib.io.sort_filenames([f for f in os.listdir(os.getcwd()) if os.path.isdir(f)])
 for cdir in dirs:
     if 'result' in cdir:
         cdir_sel = cdir
