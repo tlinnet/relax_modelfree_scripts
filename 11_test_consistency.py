@@ -128,7 +128,7 @@ for spec_frq in d_dic['spec_frq_list']:
     # Create value files
     value.write(param='j0', file='j0%s.txt'%pf, dir=write_results_dir_frq, force=True)
     value.write(param='f_eta', file='f_eta%s.txt'%pf, dir=write_results_dir_frq, force=True)
-    value.write(param='f_r2', file='f_r2%s.txt'%f,  dir=write_results_dir_frq, force=True)
+    value.write(param='f_r2', file='f_r2%s.txt'%pf,  dir=write_results_dir_frq, force=True)
 
     # Write a python "grace to PNG/EPS/SVG..." conversion script.
     # Open the file for writing.
@@ -144,7 +144,147 @@ for spec_frq in d_dic['spec_frq_list']:
     # Finish.
     results.write(file='results%s'%pf, dir=write_results_dir_frq, force=True)
     state.save('state%s'%pf, dir=write_results_dir_frq, force=True)
-    
+
+pyt_script = r"""
+import pandas as pd
+import matplotlib.pyplot as plt
+from glob import glob
+import itertools
+import decimal
+import numpy as np
+from pandas.plotting import scatter_matrix
+from seaborn import pairplot
+
+# All files has this column name
+col_n = ['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name', 'value', 'error']
+# All files should skip 3
+skiprows = 3
+
+# Define the parameters
+parameters = ['j0', 'f_eta', 'f_r2']
+#parameters = ['f_eta']
+#parameters = ['j0']
+
+# Define a data dictionary
+data = {}
+
+# Collect data
+parameters_scale = []
+for i, par in enumerate(parameters):
+    # Expand data structure
+    data[par] = {}
+    flist = glob("%s_*.txt"%par)
+
+    # Make a list of files
+    data[par]['files'] = []
+    data[par]['file_ids'] = []
+
+    # Get the files
+    df_frames = []
+    val_ids = []
+    err_ids = []
+    for j,f in enumerate(flist):
+        # Save the file name
+        data[par]['files'].append(f)
+        # Get the file_ids
+        file_id = f.split("%s_"%par)[-1].split(".txt")[0]
+        data[par]['file_ids'].append(file_id)
+
+        # Read csv
+        df_par = pd.read_csv(f, delim_whitespace=True, skiprows=skiprows, names=col_n)
+        # Replace 'None' with NaN 
+        df_par = df_par.mask(df_par.astype(object).eq('None'))
+        # Then drop 
+        df_par = df_par.dropna(axis=0, how='all', subset=['value'])
+
+        # Get scaling
+        df_min = df_par['value'].min()
+        dc = str(decimal.Decimal(df_min))
+        if "E" in dc:
+            dc_s = "1e"+dc.split("E")[-1]
+        else:
+            dc_s = 1
+
+        # Convert to numeric
+        df_par = df_par.apply(pd.to_numeric, errors='ignore')
+        # Rename
+        val_id = '%s_%s'%(par, file_id)
+        val_ids.append(val_id)
+        err_id = 'err_%s_%s'%(par, file_id)
+        err_ids.append(err_id)
+
+        df_par.rename(columns={'value': val_id, 'error': err_id}, inplace=True)
+
+        # Append to frames
+        df_frames.append(df_par)
+
+    # Merge data frames
+    df = df_frames[0].merge(df_frames[1], left_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], right_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], how='outer')
+    if len(flist) > 2:
+        for k in range(2, len(flist)):
+            df = df.merge(df_frames[k], left_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], right_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], how='outer')
+
+    #print df
+    #print df.info()
+
+    # Scale values
+    parameters_scale.append(dc_s)
+    for val_id, err_id in zip(val_ids, err_ids):
+        df[val_id] = df[val_id] * 1./float(dc_s)
+        df[err_id] = df[err_id] * 1./float(dc_s)
+        print("Scaling parameter: %s with 1/%s"%(par, dc_s))
+
+    # Plot single graphs of combinations of indexes.
+    for xi, yi in itertools.combinations(range(len(val_ids)), 2):
+        # Get id
+        x_val_id = val_ids[xi]
+        y_val_id = val_ids[yi]
+
+        # Create figure
+        f, ax = plt.subplots(1, figsize=(8, 8))
+        df.plot(ax=ax, x=x_val_id, y=y_val_id, kind='scatter')
+        # Create line
+        #ax = plt.gca()
+        lim = ax.get_xlim()
+        x_data_line = np.linspace(lim[0], lim[1], num=50)
+        ax.plot(x_data_line, x_data_line, linestyle="-", color="k", label="scale 1/%s"%(dc_s))
+        #box = ax.get_position()
+        #ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        #ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax.legend(loc='upper left')
+
+        plt.savefig('scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+        # Make histogram of ratio
+        x_val_data = df[x_val_id]
+        y_val_data = df[y_val_id]
+
+        ratio = x_val_data / y_val_data
+        # Create figure
+        f, ax = plt.subplots(1, figsize=(8, 4))
+        ax.hist(ratio, bins=50, label="%s %s"%(x_val_id, y_val_id))
+        ax.legend(loc='upper right')
+
+        plt.savefig('hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+    # Try matrix plot. Drop everyting, except data points
+    #df_m = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids, axis=1)
+    #print df_m.info()
+    #scatter_matrix(df_m, alpha=0.2, figsize=(6, 6), diagonal='kde')
+    #plt.show()
+"""
+file_name = "plot_txt_files.py"
+file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_frq, force=True)
+# Write the file.
+file.write(pyt_script)
+#lib.plotting.grace.script_grace2images(file=file)
+file.close()
+
+
 out_string = """############################################################################################################################################
 
 Script for consistency testing.
@@ -174,6 +314,14 @@ The origins of the equations used in the approach:
         Fushman et al. (1998) Direct measurement of 15N chemical shift anisotropy in solution. J. Am. Chem. Soc., 120: 10947-10952. U{http://dx.doi.org/10.1021/ja981686m}
 A study where consistency tests were used:
     Morin & Gagne (2009) NMR dynamics of PSE-4 beta-lactamase: An interplay of ps-ns order and us-ms motions in the active site. Biophys. J., 96: 4681-4691. U{http://dx.doi.org/10.1016/j.bpj.2009.02.068}
+
+
+Performing these simple calculations for each residue
+=====================================================
+
+* Comparing results obtained at different magnetic fields should, in the case of perfect consistency and 
+assuming the absence of conformational exchange, yield equal values independently of the magnetic field
+
 """
 
 file_name = "README.txt"
