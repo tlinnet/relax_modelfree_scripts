@@ -113,17 +113,22 @@ for spec_frq in d_dic['spec_frq_list']:
     monte_carlo.error_analysis()
 
     # Define output dir
-    write_results_dir_frq = write_results_dir + os.sep + frq_short+"_MC_%i"%(val_mc)
+    #write_results_dir_frq = write_results_dir + os.sep + frq_short+"_MC_%i"%(val_mc)
+    # Post-fix to file names
+    #pf = ""
+
+    write_results_dir_frq = write_results_dir + os.sep + "MC_%i"%(val_mc)
+    pf = "_"+frq_short
 
     # Create grace files.
-    grace.write(y_data_type='j0', file='j0.agr', dir=write_results_dir_frq, force=True)
-    grace.write(y_data_type='f_eta', file='f_eta.agr', dir=write_results_dir_frq, force=True)
-    grace.write(y_data_type='f_r2', file='f_r2.agr',  dir=write_results_dir_frq, force=True)
+    grace.write(y_data_type='j0', file='j0%s.agr'%pf, dir=write_results_dir_frq, force=True)
+    grace.write(y_data_type='f_eta', file='f_eta%s.agr'%pf, dir=write_results_dir_frq, force=True)
+    grace.write(y_data_type='f_r2', file='f_r2%s.agr'%pf,  dir=write_results_dir_frq, force=True)
 
     # Create value files
-    value.write(param='j0', file='j0.txt', dir=write_results_dir_frq, force=True)
-    value.write(param='f_eta', file='f_eta.txt', dir=write_results_dir_frq, force=True)
-    value.write(param='f_r2', file='f_r2.txt',  dir=write_results_dir_frq, force=True)
+    value.write(param='j0', file='j0%s.txt'%pf, dir=write_results_dir_frq, force=True)
+    value.write(param='f_eta', file='f_eta%s.txt'%pf, dir=write_results_dir_frq, force=True)
+    value.write(param='f_r2', file='f_r2%s.txt'%f,  dir=write_results_dir_frq, force=True)
 
     # Write a python "grace to PNG/EPS/SVG..." conversion script.
     # Open the file for writing.
@@ -137,8 +142,8 @@ for spec_frq in d_dic['spec_frq_list']:
     os.chmod(file_path, stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
 
     # Finish.
-    results.write(file='results', dir=write_results_dir_frq, force=True)
-    state.save('state', dir=write_results_dir_frq, force=True)
+    results.write(file='results%s'%pf, dir=write_results_dir_frq, force=True)
+    state.save('state%s'%pf, dir=write_results_dir_frq, force=True)
     
 out_string = """############################################################################################################################################
 
