@@ -1,5 +1,5 @@
 # Python module imports.
-import os, stat
+import os, stat, sys
  
 # relax module imports.
 from auto_analyses.dauvergne_protocol import dAuvergne_protocol
@@ -53,6 +53,9 @@ for cdir in dirs:
 #var = raw_input("Please enter the name of the results_dir[result_10]:") or "result_10"
 var = raw_input("Please enter the name of the results_dir[%s]:"%cdir_sel) or cdir_sel
 results_dir = os.getcwd() + os.sep + var
+if not os.path.isdir(results_dir):
+    sys.exit("\nThe result dir does not exists! :%s"%results_dir)
+
 print("Results dir is: %s"%results_dir)
 write_results_dir = os.getcwd() + os.sep + var+out_dir
 print("write_results dir is: %s"%write_results_dir)
