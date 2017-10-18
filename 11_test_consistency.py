@@ -153,7 +153,7 @@ import itertools
 import decimal
 import numpy as np
 from pandas.plotting import scatter_matrix
-from seaborn import pairplot
+from seaborn import pairplot, despine
 
 # All files has this column name
 col_n = ['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name', 'value', 'error']
@@ -165,30 +165,20 @@ parameters = ['j0', 'f_eta', 'f_r2']
 #parameters = ['f_eta']
 #parameters = ['j0']
 
-# Define a data dictionary
-data = {}
-
 # Collect data
-parameters_scale = []
+dfg_frames = []
+file_ids = []
 for i, par in enumerate(parameters):
-    # Expand data structure
-    data[par] = {}
     flist = glob("%s_*.txt"%par)
-
-    # Make a list of files
-    data[par]['files'] = []
-    data[par]['file_ids'] = []
 
     # Get the files
     df_frames = []
     val_ids = []
     err_ids = []
     for j,f in enumerate(flist):
-        # Save the file name
-        data[par]['files'].append(f)
         # Get the file_ids
         file_id = f.split("%s_"%par)[-1].split(".txt")[0]
-        data[par]['file_ids'].append(file_id)
+        file_ids.append(file_id)
 
         # Read csv
         df_par = pd.read_csv(f, delim_whitespace=True, skiprows=skiprows, names=col_n)
@@ -223,12 +213,13 @@ for i, par in enumerate(parameters):
     if len(flist) > 2:
         for k in range(2, len(flist)):
             df = df.merge(df_frames[k], left_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], right_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], how='outer')
-
     #print df
     #print df.info()
 
+    # Collect merged dataframe
+    dfg_frames.append(df)
+
     # Scale values
-    parameters_scale.append(dc_s)
     for val_id, err_id in zip(val_ids, err_ids):
         df[val_id] = df[val_id] * 1./float(dc_s)
         df[err_id] = df[err_id] * 1./float(dc_s)
@@ -276,6 +267,46 @@ for i, par in enumerate(parameters):
     #print df_m.info()
     #scatter_matrix(df_m, alpha=0.2, figsize=(6, 6), diagonal='kde')
     #plt.show()
+
+# Merge data frames
+for i, par in enumerate(parameters):
+    dfi = dfg_frames[i]
+    # Rename
+    val_ids = []
+    err_ids = []
+    for j, file_id in enumerate(file_ids):
+        # Define previous ids
+        val_id_prev = '%s_%s'%(par, file_id)
+        err_id_prev = 'err_%s_%s'%(par, file_id)
+
+        # Define new ids
+        val_id = 'value_%s'%file_id
+        err_id = 'error_%s'%file_id
+        val_ids.append(val_id)
+        err_ids.append(err_id)
+
+        # Rename
+        dfi.rename(columns={val_id_prev: val_id, err_id_prev: err_id}, inplace=True)
+        # Add the param to column
+        dfi = dfi.assign(param=par)
+
+    # Merge downwards
+    if i == 0:
+        dfg = dfi
+    else:
+        # Concatenate data from first run
+        dfg = pd.concat([dfg, dfi], ignore_index=True)
+
+# Drop data
+dfg = dfg.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids, axis=1)
+#print dfg.info()
+
+g = pairplot(dfg, hue="param", diag_kind='kde')
+g.fig.set_size_inches(8, 8)
+plt.savefig('pairplot.png')
+
+plt.show()
+plt.close()
 """
 file_name = "plot_txt_files.py"
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_frq, force=True)
