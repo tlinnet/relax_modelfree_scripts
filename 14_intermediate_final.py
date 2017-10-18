@@ -15,7 +15,7 @@ while ans:
     print("  0: Do intermediate final run")
     print("  1: Do final run")
 
-    ans=raw_input("What would you like to do?[0]:") or 0 
+    ans=raw_input("What would you like to do?[0]:") or "0"
     if ans=="0": 
         print("")
         print("------------------------------------------")
@@ -37,16 +37,21 @@ while ans:
         MC_NUM = int(MC_NUM)
         ans=False
 
-    elif ans !="" or ans =="":
-        print("\n-Not Valid Choice - Try again-\n")
-        ans=True
-
 print("MC_NUM=%i"%MC_NUM)
+
+# Get the directories in the folder
+dirs = [f for f in os.listdir(os.getcwd()) if os.path.isdir(f)]
+for cdir in dirs:
+    if 'result' in cdir:
+        cdir_sel = cdir
+        break
+    else:
+        cdir_sel = "result_10"
 
 # Read the state with the setup
 # The results dir.
 #var = raw_input("Please enter the name of the results_dir[result_10]:") or "result_10"
-var = raw_input("Please enter the name of the results_dir[result_06]:") or "result_06"
+var = raw_input("Please enter the name of the results_dir[%s]:"%cdir_sel) or cdir_sel
 results_dir = os.getcwd() + os.sep + var
 print("Results dir is: %s"%results_dir)
 write_results_dir = os.getcwd() + os.sep + var+out_dir
