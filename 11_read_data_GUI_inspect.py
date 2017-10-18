@@ -45,6 +45,11 @@ interatom.unit_vectors()
 # Define the chemical shift relaxation interaction.
 value.set(-172 * 1e-6, 'csa', spin_id='@N*')
 
+# If deselect exist
+desel_f = "deselect.txt"
+if os.path.isfile(desel_f):
+    deselect.read(file=desel_f, mol_name_col=1, res_num_col=2, res_name_col=3, spin_num_col=4, spin_name_col=5)
+
 # The results dir.
 var = 'result_10'
 results_dir = os.getcwd() + os.sep + var
