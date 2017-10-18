@@ -55,18 +55,15 @@ for ri_id in relax_data_ids:
     d_dic['spec_frq_data'][cdp.spectrometer_frq[ri_id]]['ri_ids_types'].append([cdp.ri_type[ri_id], ri_id])
     d_dic['spec_frq_data'][cdp.spectrometer_frq[ri_id]]['ri_types'].append(cdp.ri_type[ri_id])
 
-# Print data per spectrometer_frq
-print("\nType of data per spectrometer_frq:")
-print("#####################################")
+# Do the consistency tests per spectrometer_frq:
+print("\nNow doing consistency tests per spectrometer_frq:")
+print("###################################################")
 for spec_frq in d_dic['spec_frq_list']:
     print("\nFor spectrometer_frq[Hz]: %s" % spec_frq)
     #print(d_dic['spec_frq_data'][spec_frq]['ri_types'])
     print("Type and id: %s"% d_dic['spec_frq_data'][spec_frq]['ri_ids_types'] )
 
-# Do the consistency tests per spectrometer_frq:
-print("\nNow doing consistency tests per spectrometer_frq:")
-print("###################################################")
-for spec_frq in d_dic['spec_frq_list']:
+    # Extract types
     ri_types = d_dic['spec_frq_data'][spec_frq]['ri_types']
     # Test if all types are present
     test = ['R1', 'R2', 'NOE']
@@ -75,7 +72,7 @@ for spec_frq in d_dic['spec_frq_list']:
         continue
 
     # Copy the current data pipe
-    frq_short = "%.0f_Mhz" % (spec_frq/1e6)
+    frq_short = "%.0f_MHz" % (spec_frq/1e6)
     pipe_name_ct = "%s_%s" %("consistency", frq_short)
     pipe.copy(pipe_from=pipe_name, pipe_to=pipe_name_ct, bundle_to=pipe_bundle)
     pipe.switch(pipe_name=pipe_name_ct)
@@ -116,10 +113,15 @@ for spec_frq in d_dic['spec_frq_list']:
     monte_carlo.error_analysis()
 
     # Create grace files.
-    write_results_dir_frq = write_results_dir + os.sep + frq_short
+    write_results_dir_frq = write_results_dir + os.sep + frq_short+"_MC_%i"%(val_mc)
     grace.write(y_data_type='j0', file='j0.agr', dir=write_results_dir_frq, force=True)
     grace.write(y_data_type='f_eta', file='f_eta.agr', dir=write_results_dir_frq, force=True)
     grace.write(y_data_type='f_r2', file='f_r2.agr',  dir=write_results_dir_frq, force=True)
+
+    # Create value files
+    value.write(param='j0', file='j0.txt', dir=write_results_dir_frq, force=True)
+    value.write(param='f_eta', file='f_eta.txt', dir=write_results_dir_frq, force=True)
+    value.write(param='f_r2', file='f_r2.txt',  dir=write_results_dir_frq, force=True)
 
     # Write a python "grace to PNG/EPS/SVG..." conversion script.
     # Open the file for writing.
@@ -131,3 +133,46 @@ for spec_frq in d_dic['spec_frq_list']:
     file.close()
     file_path = lib.io.get_file_path(file_name, write_results_dir_grace)
     os.chmod(file_path, stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
+
+    # Finish.
+    results.write(file='results', dir=write_results_dir_frq, force=True)
+    state.save('state', dir=write_results_dir_frq, force=True)
+    
+out_string = """############################################################################################################################################
+
+Script for consistency testing.
+Severe artifacts can be introduced if model-free analysis is performed from inconsistent multiple magnetic field datasets. 
+
+The use of simple tests as validation tools for the consistency assessment can help avoid such problems in order to extract more 
+reliable information from spin relaxation experiments. In particular, these tests are useful for detecting inconsistencies arising from R2 data. 
+
+Since such inconsistencies can yield artifactual Rex parameters within model-free analysis, these tests should be used 
+routinely prior to any analysis such as model-free calculations.
+
+This script will allow one to calculate values for the three consistency tests J(0), F_eta and F_R2. 
+
+Once this is done, qualitative analysis can be performed by comparing values obtained at different magnetic fields. 
+Correlation plots and histograms are useful tools for such comparison, such as presented in Morin & Gagne (2009a) J. Biomol. NMR, 45: 361-372.
+
+References
+==========
+The description of the consistency testing approach:
+    Morin & Gagne (2009a) Simple tests for the validation of multiple field spin relaxation data. J. Biomol. NMR, 45: 361-372. U{http://dx.doi.org/10.1007/s10858-009-9381-4}
+The origins of the equations used in the approach:
+    J(0):
+        Farrow et al. (1995) Spectral density function mapping using 15N relaxation data exclusively. J. Biomol. NMR, 6: 153-162. U{http://dx.doi.org/10.1007/BF00211779}
+    F_eta:
+        Fushman et al. (1998) Direct measurement of 15N chemical shift anisotropy in solution. J. Am. Chem. Soc., 120: 10947-10952. U{http://dx.doi.org/10.1021/ja981686m}
+    F_R2:
+        Fushman et al. (1998) Direct measurement of 15N chemical shift anisotropy in solution. J. Am. Chem. Soc., 120: 10947-10952. U{http://dx.doi.org/10.1021/ja981686m}
+A study where consistency tests were used:
+    Morin & Gagne (2009) NMR dynamics of PSE-4 beta-lactamase: An interplay of ps-ns order and us-ms motions in the active site. Biophys. J., 96: 4681-4691. U{http://dx.doi.org/10.1016/j.bpj.2009.02.068}
+"""
+
+file_name = "README.txt"
+file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir, force=True)
+# Write the file.
+file.write(out_string)
+#lib.plotting.grace.script_grace2images(file=file)
+file.close()
+print(out_string)
