@@ -305,7 +305,7 @@ g = pairplot(dfg, hue="param", diag_kind='kde')
 g.fig.set_size_inches(8, 8)
 plt.savefig('pairplot.png')
 
-plt.show()
+#plt.show()
 plt.close()
 """
 file_name = "plot_txt_files.py"
