@@ -490,7 +490,7 @@ pytl.append("box = ax3.get_position()" + '\n')
 pytl.append("ax3.set_position([box.x0, box.y0, box.width * 0.8, box.height])" + '\n') 
 pytl.append("ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))" + '\n') 
 pytl.append("" + '\n') 
-pytl.append("" + '\n') 
+pytl.append("plt.savefig('results_collected.png')" + '\n')
 pytl.append("plt.show()" + '\n') 
 
 # Define write out
