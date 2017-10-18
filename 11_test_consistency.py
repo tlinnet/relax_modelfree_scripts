@@ -112,8 +112,10 @@ for spec_frq in d_dic['spec_frq_list']:
     minimise.calculate()
     monte_carlo.error_analysis()
 
-    # Create grace files.
+    # Define output dir
     write_results_dir_frq = write_results_dir + os.sep + frq_short+"_MC_%i"%(val_mc)
+
+    # Create grace files.
     grace.write(y_data_type='j0', file='j0.agr', dir=write_results_dir_frq, force=True)
     grace.write(y_data_type='f_eta', file='f_eta.agr', dir=write_results_dir_frq, force=True)
     grace.write(y_data_type='f_r2', file='f_r2.agr',  dir=write_results_dir_frq, force=True)
