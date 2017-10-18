@@ -31,10 +31,10 @@ while ans:
         print("------------------------------------------")
         print("|    Final run                           |")
         print("------------------------------------------")
-        out_dir = "_final"
         mode = "final"
         MC_NUM = raw_input("Please enter nr of Monte-Carlo simulations MC_NUM[500]:") or 500
         MC_NUM = int(MC_NUM)
+        out_dir = "_final_MC_%i"%(MC_NUM)
         ans=False
 
 print("MC_NUM=%i"%MC_NUM)
