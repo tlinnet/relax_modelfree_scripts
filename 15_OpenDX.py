@@ -11,7 +11,7 @@ while ans:
     print("  0: Store in intermediate final run")
     print("  1: Store in final run")
 
-    ans=raw_input("What would you like to do?[0]:") or 0
+    ans=raw_input("What would you like to do?[0]:") or "0"
     if ans=="0": 
         print("")
         print("------------------------------------------")
@@ -30,15 +30,23 @@ while ans:
         mode = "final"
         ans=False
 
-    elif ans !="" or ans =="":
-        print("\n-Not Valid Choice - Try again-\n")
-        ans=True
+# Get the directories in the folder
+dirs = lib.io.sort_filenames([f for f in os.listdir(os.getcwd()) if os.path.isdir(f)])
+for cdir in dirs:
+    if 'result' in cdir:
+        cdir_sel = cdir
+        break
+    else:
+        cdir_sel = "result_10"
 
 # Read the state with the setup
 # The results dir.
 #var = raw_input("Please enter the name of the results_dir[result_10]:") or "result_10"
-var = raw_input("Please enter the name of the results_dir[result_06]:") or "result_06"
+var = raw_input("Please enter the name of the results_dir[%s]:"%cdir_sel) or cdir_sel
 results_dir = os.getcwd() + os.sep + var
+if not os.path.isdir(results_dir):
+    sys.exit("\nThe result dir does not exists! :%s"%results_dir)
+
 print("Results dir is: %s"%results_dir)
 write_results_dir = os.getcwd() + os.sep + var+out_dir
 print("write_results dir is: %s"%write_results_dir)
