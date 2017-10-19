@@ -371,8 +371,9 @@ file.close()
 ###########################################################################################
 #Get chi2 per iteration
 
-ans = raw_input("Should I the find chi2 value per iteraion?[n]:") or "n"
-#ans = "n"
+if ans != 'y':
+    ans = raw_input("Should I the find chi2 value per iteraion?[n]:") or "n"
+
 if ans == 'y':
     dir_list = os.listdir(results_dir)
 
