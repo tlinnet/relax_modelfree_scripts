@@ -146,7 +146,6 @@ for spec_frq in d_dic['spec_frq_list']:
     state.save('state%s'%pf, dir=write_results_dir_frq, force=True)
 
 pyt_script = r"""
-
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
@@ -163,9 +162,9 @@ col_n = ['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name', 'value', 'e
 skiprows = 3
 
 # Define the parameters
-#parameters = ['j0', 'f_eta', 'f_r2']
+parameters = ['j0', 'f_eta', 'f_r2']
 #parameters = ['f_eta']
-parameters = ['j0']
+#parameters = ['j0']
 
 # Set values for warning
 warn_ratio_over = 1.2
@@ -174,17 +173,25 @@ warn_ratio_under = 0.8
 # Collect data
 dfg_frames = []
 file_ids = []
+
+# Collect ids
+val_ids = []
+err_ids = []
+diff_ids = []
 for i, par in enumerate(parameters):
     flist = glob("%s_*.txt"%par)
 
     # Get the files
+    file_ids.append([])
+    val_ids.append([])
+    err_ids.append([])
+    diff_ids.append([])
+
     df_frames = []
-    val_ids = []
-    err_ids = []
     for j,f in enumerate(flist):
         # Get the file_ids
         file_id = f.split("%s_"%par)[-1].split(".txt")[0]
-        file_ids.append(file_id)
+        file_ids[i].append(file_id)
 
         # Read csv
         df_par = pd.read_csv(f, delim_whitespace=True, skiprows=skiprows, names=col_n)
@@ -205,9 +212,9 @@ for i, par in enumerate(parameters):
         df_par = df_par.apply(pd.to_numeric, errors='ignore')
         # Rename
         val_id = '%s_%s'%(par, file_id)
-        val_ids.append(val_id)
+        val_ids[i].append(val_id)
         err_id = 'err_%s_%s'%(par, file_id)
-        err_ids.append(err_id)
+        err_ids[i].append(err_id)
 
         df_par.rename(columns={'value': val_id, 'error': err_id}, inplace=True)
 
@@ -222,22 +229,22 @@ for i, par in enumerate(parameters):
     #print df
     #print df.info()
 
-    # Collect merged dataframe
-    dfg_frames.append(df)
-
     # Scale values
-    for val_id, err_id in zip(val_ids, err_ids):
+    for val_id, err_id in zip(val_ids[i], err_ids[i]):
         df[val_id] = df[val_id] * 1./float(dc_s)
         df[err_id] = df[err_id] * 1./float(dc_s)
         print("Scaling parameter: %s with 1/%s"%(par, dc_s))
 
+    # Collect merged dataframe
+    dfg_frames.append(df.copy())
+
     # Plot single graphs of combinations of indexes.
-    for xi, yi in itertools.combinations(range(len(val_ids)), 2):
+    for xi, yi in itertools.combinations(range(len(val_ids[i])), 2):
         # Get ids
-        x_val_id = val_ids[xi]
-        y_val_id = val_ids[yi]
-        x_err_id = err_ids[xi]
-        y_err_id = err_ids[yi]
+        x_val_id = val_ids[i][xi]
+        y_val_id = val_ids[i][yi]
+        x_err_id = err_ids[i][xi]
+        y_err_id = err_ids[i][yi]
 
         # Get val
         x_val_data = df[x_val_id]
@@ -294,6 +301,10 @@ for i, par in enumerate(parameters):
         f, ax = plt.subplots(1, figsize=(8, 4))
         ax.hist(ratio, bins=50, normed=True, label="%s %s"%(x_val_id, y_val_id))
         ax.legend(loc='upper right')
+        # Get lim and set equal
+        max_lim = np.max(np.abs( np.asarray(ax.get_xlim())-1 ))
+        ax.set_xlim(1 - max_lim, 1 + max_lim)
+
         # Save figure
         plt.savefig('plot_0_hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
         #plt.show()
@@ -310,7 +321,7 @@ for i, par in enumerate(parameters):
         v_s_g = x_err_data / x_val_data
         v_s_h = y_err_data / x_val_data
         # difference vector
-        v_d = v_g - v_h
+        v_d = v_h - v_g
         # pooled standard deviation. These are equal: std_pool_test = np.sqrt( np.sum( v_s_g**2 + v_s_h**2 )/len(v_s_g) )
         std_pool = np.sqrt( np.mean( np.square(v_s_g) + np.square(v_s_h) ) )
         # mean difference. These are equal: mean_diff_test = np.dot( np.ones(len(v_d)), v_d ) / len(v_d)
@@ -318,14 +329,24 @@ for i, par in enumerate(parameters):
         # standard deviation of differences
         std_d = np.std(v_d, ddof=1)
 
+        # Collect id, and add to dataframe
+        diff_id = "%s_%s"%(x_val_id, y_val_id)
+        diff_ids[i].append(diff_id)
+        # Append to dataframe
+        df[diff_id] = v_d
+
         # Create figure for scatter
         f, ax = plt.subplots(1, figsize=(8, 8))
         # Plot
-        ax.scatter(np.zeros(len(v_h)), v_d, label="%s %s"%(x_val_id, y_val_id))
-        ax.scatter(0, mean_d, label="Mean of differences")
-        ax.scatter([0, 0], [mean_d+std_d, mean_d-std_d], label="Mean +/- 1*std")
+        ax.scatter(v_d, np.zeros(len(v_h)), label="%s %s"%(x_val_id, y_val_id))
+        ax.scatter(mean_d, 0, label="Mean of differences")
+        ax.scatter([mean_d+std_d, mean_d-std_d], [0, 0], label="Mean +/- 1*std")
         ax.set_ylabel("Ratio normalized differences")
         ax.legend(loc='upper right')
+        # Get lim and set equal
+        max_lim = np.max(np.abs( ax.get_xlim() ))
+        ax.set_xlim(-1*max_lim, max_lim)
+
         # Save figure
         plt.savefig('plot_1_scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
         #plt.show()
@@ -334,8 +355,7 @@ for i, par in enumerate(parameters):
         # Create figure for histogram
         f, ax = plt.subplots(1, figsize=(8, 8))
         ax.hist(v_d, bins=50, normed=True, label="%s %s"%(x_val_id, y_val_id))
-        # Get lim and set equal
-        max_lim = np.max(np.abs( ax.get_xlim() ))
+        # Set same x_lim and set equal
         ax.set_xlim(-1*max_lim, max_lim)
 
         # Plot normal distribution
@@ -361,29 +381,41 @@ for i, par in enumerate(parameters):
         plt.close()
 
     # Try matrix plot. Drop everyting, except data points
-    df_m = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids, axis=1)
-    #print df_m.info()
-    scatter_matrix(df_m, alpha=0.2, figsize=(6, 6), diagonal='kde')
+    df_m0 = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids[i]+diff_ids[i], axis=1)
+    #print df_m0.info()
+    scatter_matrix(df_m0, alpha=0.2, figsize=(6, 6), diagonal='kde')
     plt.savefig('plot_0_scattermatrix_%s.png'%(par))
     plt.close()
     #plt.show()
+
+    # Try another matrix plot. Drop everyting, except diff points
+    if len(flist) > 2:
+        df_m1 = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids[i]+val_ids[i], axis=1)
+        scatter_matrix(df_m1, alpha=0.2, figsize=(6, 6), diagonal='kde')
+        ax = plt.gca()
+        # Get lim and set equal
+        max_lim = np.max(np.abs( ax.get_xlim() ))
+        ax.set_xlim(-1*max_lim, max_lim)
+        plt.savefig('plot_1_scattermatrix_%s.png'%(par))
+        plt.close()
+        #plt.show()
 
 # Merge data frames
 for i, par in enumerate(parameters):
     dfi = dfg_frames[i]
     # Rename
-    val_ids = []
-    err_ids = []
-    for j, file_id in enumerate(file_ids):
+    val_ids_new = []
+    err_ids_new = []
+    for j, file_id in enumerate(file_ids[i]):
         # Define previous ids
-        val_id_prev = '%s_%s'%(par, file_id)
-        err_id_prev = 'err_%s_%s'%(par, file_id)
+        val_id_prev = val_ids[i][j]
+        err_id_prev = err_ids[i][j]
 
         # Define new ids
         val_id = 'value_%s'%file_id
         err_id = 'error_%s'%file_id
-        val_ids.append(val_id)
-        err_ids.append(err_id)
+        val_ids_new.append(val_id)
+        err_ids_new.append(err_id)
 
         # Rename
         dfi.rename(columns={val_id_prev: val_id, err_id_prev: err_id}, inplace=True)
@@ -398,7 +430,7 @@ for i, par in enumerate(parameters):
         dfg = pd.concat([dfg, dfi], ignore_index=True)
 
 # Drop data
-dfg = dfg.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids, axis=1)
+dfg = dfg.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids_new, axis=1)
 #print dfg.info()
 
 # Make pairplo
@@ -407,7 +439,6 @@ g.fig.set_size_inches(8, 8)
 plt.savefig('plot_0_pairplot.png')
 #plt.show()
 plt.close()
-
 """
 file_name = "plot_txt_files.py"
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_frq, force=True)
