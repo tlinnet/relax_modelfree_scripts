@@ -146,6 +146,7 @@ for spec_frq in d_dic['spec_frq_list']:
     state.save('state%s'%pf, dir=write_results_dir_frq, force=True)
 
 pyt_script = r"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
@@ -162,13 +163,17 @@ col_n = ['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name', 'value', 'e
 skiprows = 3
 
 # Define the parameters
-parameters = ['j0', 'f_eta', 'f_r2']
+#parameters = ['j0', 'f_eta', 'f_r2']
 #parameters = ['f_eta']
-#parameters = ['j0']
+parameters = ['j0']
 
 # Set values for warning
 warn_ratio_over = 1.2
 warn_ratio_under = 0.8
+warn_std_factor = 3.0 # 1.0: 32% outside, 2.0: 5% outside, 3.0: 0.3% outside
+
+# Set bins
+bins = 50
 
 # Collect data
 dfg_frames = []
@@ -299,8 +304,8 @@ for i, par in enumerate(parameters):
         # Create histogram
         # Create figure
         f, ax = plt.subplots(1, figsize=(8, 4))
-        ax.hist(ratio, bins=50, normed=True, label="%s %s"%(x_val_id, y_val_id))
-        ax.legend(loc='upper right')
+        ax.hist(ratio, bins=bins, normed=True, label="%s %s"%(x_val_id, y_val_id))
+        ax.legend(loc='upper left')
         # Get lim and set equal
         max_lim = np.max(np.abs( np.asarray(ax.get_xlim())-1 ))
         ax.set_xlim(1 - max_lim, 1 + max_lim)
@@ -335,14 +340,28 @@ for i, par in enumerate(parameters):
         # Append to dataframe
         df[diff_id] = v_d
 
+        # Create std warning 
+        ## Under True/False
+        std_warn_sel = ( v_d > mean_d + warn_std_factor*std_d ) | ( v_d < mean_d - warn_std_factor*std_d )
+        std_warn_x = v_d[std_warn_sel].tolist()
+        std_warn_resi = df['res_num'][std_warn_sel].astype(str).tolist()
+
         # Create figure for scatter
         f, ax = plt.subplots(1, figsize=(8, 8))
         # Plot
         ax.scatter(v_d, np.zeros(len(v_h)), label="%s %s"%(x_val_id, y_val_id))
         ax.scatter(mean_d, 0, label="Mean of differences")
-        ax.scatter([mean_d+std_d, mean_d-std_d], [0, 0], label="Mean +/- 1*std")
+        ax.scatter([mean_d + std_d, mean_d - std_d], [0.1, 0.1], label="Mean +/- 1*std")
+        ax.scatter([mean_d + 2*std_d, mean_d - 2*std_d], [0.1, 0.1], label="Mean +/- 2*std")
+        ax.scatter([mean_d + 3*std_d, mean_d - 3*std_d], [0.1, 0.1], label="Mean +/- 3*std")
         ax.set_ylabel("Ratio normalized differences")
-        ax.legend(loc='upper right')
+        ax.legend(loc='upper left')
+        ax.set_ylim(-1, 1)
+        # Create warning 
+        ## Over
+        for k, (x, s) in enumerate(zip(std_warn_x, std_warn_resi)):
+            ax.text(x, -0.1-k*0.1, s)
+
         # Get lim and set equal
         max_lim = np.max(np.abs( ax.get_xlim() ))
         ax.set_xlim(-1*max_lim, max_lim)
@@ -354,12 +373,12 @@ for i, par in enumerate(parameters):
 
         # Create figure for histogram
         f, ax = plt.subplots(1, figsize=(8, 8))
-        ax.hist(v_d, bins=50, normed=True, label="%s %s"%(x_val_id, y_val_id))
+        ax.hist(v_d, bins=bins, normed=True, label="%s %s"%(x_val_id, y_val_id))
         # Set same x_lim and set equal
         ax.set_xlim(-1*max_lim, max_lim)
 
         # Plot normal distribution
-        x_norm = np.linspace(-1*max_lim, max_lim, 100)
+        x_norm = np.linspace(-1*max_lim, max_lim, 500)
         # Library
         y_norm = mlab.normpdf(x_norm, mean_d, std_d)
         plt.plot(x_norm, y_norm, label="normpdf")
@@ -375,7 +394,7 @@ for i, par in enumerate(parameters):
         plt.plot(x_norm, y_norm_pool, label="normpdf pool")
 
         # Save figure
-        ax.legend(loc='upper right')
+        ax.legend(loc='upper left')
         plt.savefig('plot_1_hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
         #plt.show()
         plt.close()
