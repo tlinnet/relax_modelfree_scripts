@@ -146,8 +146,10 @@ for spec_frq in d_dic['spec_frq_list']:
     state.save('state%s'%pf, dir=write_results_dir_frq, force=True)
 
 pyt_script = r"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
 from glob import glob
 import itertools
 import decimal
@@ -161,9 +163,9 @@ col_n = ['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name', 'value', 'e
 skiprows = 3
 
 # Define the parameters
-parameters = ['j0', 'f_eta', 'f_r2']
+#parameters = ['j0', 'f_eta', 'f_r2']
 #parameters = ['f_eta']
-#parameters = ['j0']
+parameters = ['j0']
 
 # Set values for warning
 warn_ratio_over = 1.2
@@ -231,14 +233,20 @@ for i, par in enumerate(parameters):
 
     # Plot single graphs of combinations of indexes.
     for xi, yi in itertools.combinations(range(len(val_ids)), 2):
-        # Get id
+        # Get ids
         x_val_id = val_ids[xi]
         y_val_id = val_ids[yi]
+        x_err_id = err_ids[xi]
+        y_err_id = err_ids[yi]
 
-        # Make ratio
+        # Get val
         x_val_data = df[x_val_id]
         y_val_data = df[y_val_id]
+        # Make ratio
         ratio = y_val_data / x_val_data
+        # Get err
+        x_err_data = df[x_err_id]
+        y_err_data = df[y_err_id]
 
         # Make warning labels
         ## Over True/False
@@ -256,7 +264,6 @@ for i, par in enumerate(parameters):
         ratio_under_x = x_val_data[ratio_under].tolist()
         ratio_under_y = y_val_data[ratio_under].tolist()
         ratio_under_resi = df['res_num'][ratio_under].astype(str).tolist()
-        print ratio_under_y
 
         # Create figure
         f, ax = plt.subplots(1, figsize=(8, 8))
@@ -265,7 +272,7 @@ for i, par in enumerate(parameters):
         ## Over
         for x, y, s in zip(ratio_over_x, ratio_over_y, ratio_over_resi):
             ax.text(x, y, s)
-        ## Over
+        ## Under
         for x, y, s in zip(ratio_under_x, ratio_under_y, ratio_under_resi):
             ax.text(x, y, s)
 
@@ -277,19 +284,79 @@ for i, par in enumerate(parameters):
         #ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         #ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         ax.legend(loc='upper left')
-
         # Save figure
         plt.savefig('plot_0_scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
         #plt.show()
         plt.close()
 
+        # Create histogram
         # Create figure
         f, ax = plt.subplots(1, figsize=(8, 4))
-        ax.hist(ratio, bins=50, label="%s %s"%(x_val_id, y_val_id))
+        ax.hist(ratio, bins=50, normed=True, label="%s %s"%(x_val_id, y_val_id))
         ax.legend(loc='upper right')
-
         # Save figure
         plt.savefig('plot_0_hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+        # For the following calculations, see:
+        # Linnet, T.E., Teilum, K. "Non-uniform sampling of NMR relaxation data", Journal of Biomolecular NMR, 2016, 
+        # DOI: 10.1007/s10858-016-0020-6, http://dx.doi.org/10.1007/s10858-016-0020-6
+
+        # ratio normalization
+        v_g = x_val_data / x_val_data
+        v_h = y_val_data / x_val_data
+        # normalized vector uncertainties
+        v_s_g = x_err_data / x_val_data
+        v_s_h = y_err_data / x_val_data
+        # difference vector
+        v_d = v_g - v_h
+        # pooled standard deviation. These are equal: std_pool_test = np.sqrt( np.sum( v_s_g**2 + v_s_h**2 )/len(v_s_g) )
+        std_pool = np.sqrt( np.mean( np.square(v_s_g) + np.square(v_s_h) ) )
+        # mean difference. These are equal: mean_diff_test = np.dot( np.ones(len(v_d)), v_d ) / len(v_d)
+        mean_d = np.mean(v_d)
+        # standard deviation of differences
+        std_d = np.std(v_d, ddof=1)
+
+        # Create figure for scatter
+        f, ax = plt.subplots(1, figsize=(8, 8))
+        # Plot
+        ax.scatter(np.zeros(len(v_h)), v_d, label="%s %s"%(x_val_id, y_val_id))
+        ax.scatter(0, mean_d, label="Mean of differences")
+        ax.scatter([0, 0], [mean_d+std_d, mean_d-std_d], label="Mean +/- 1*std")
+        ax.set_ylabel("Ratio normalized differences")
+        ax.legend(loc='upper right')
+        # Save figure
+        plt.savefig('plot_1_scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+        # Create figure for histogram
+        f, ax = plt.subplots(1, figsize=(8, 8))
+        ax.hist(v_d, bins=50, normed=True, label="%s %s"%(x_val_id, y_val_id))
+        # Get lim and set equal
+        max_lim = np.max(np.abs( ax.get_xlim() ))
+        ax.set_xlim(-1*max_lim, max_lim)
+
+        # Plot normal distribution
+        x_norm = np.linspace(-1*max_lim, max_lim, 100)
+        # Library
+        y_norm = mlab.normpdf(x_norm, mean_d, std_d)
+        plt.plot(x_norm, y_norm, label="normpdf")
+        # Manually
+        #y_norm_1 = np.exp(-np.power(x_norm - mean_d, 2.) / (2 * np.power(std_d, 2.)))
+        #plt.plot(x_norm, y_norm_1, label="norm 1")
+        #y_norm_2 = y_norm_1 * (1.0/(std_d * np.sqrt(2.0 * np.pi))) 
+        #plt.plot(x_norm, y_norm_2, label="norm 2")
+
+        # Create the comparison normal distribution
+        y_norm_pool = mlab.normpdf(x_norm, 0.0, std_pool)
+        #y_norm_pool = mlab.normpdf(x_norm, mean_d, std_pool)
+        plt.plot(x_norm, y_norm_pool, label="normpdf pool")
+
+        # Save figure
+        ax.legend(loc='upper right')
+        plt.savefig('plot_1_hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
         #plt.show()
         plt.close()
 
@@ -334,12 +401,13 @@ for i, par in enumerate(parameters):
 dfg = dfg.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids, axis=1)
 #print dfg.info()
 
+# Make pairplo
 g = pairplot(dfg, hue="param", diag_kind='kde')
 g.fig.set_size_inches(8, 8)
 plt.savefig('plot_0_pairplot.png')
-
 #plt.show()
 plt.close()
+
 """
 file_name = "plot_txt_files.py"
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_frq, force=True)
