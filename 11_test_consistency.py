@@ -165,6 +165,10 @@ parameters = ['j0', 'f_eta', 'f_r2']
 #parameters = ['f_eta']
 #parameters = ['j0']
 
+# Set values for warning
+warn_ratio_over = 1.2
+warn_ratio_under = 0.8
+
 # Collect data
 dfg_frames = []
 file_ids = []
@@ -231,11 +235,41 @@ for i, par in enumerate(parameters):
         x_val_id = val_ids[xi]
         y_val_id = val_ids[yi]
 
+        # Make ratio
+        x_val_data = df[x_val_id]
+        y_val_data = df[y_val_id]
+        ratio = y_val_data / x_val_data
+
+        # Make warning labels
+        ## Over True/False
+        ratio_over = ratio > warn_ratio_over
+        ratio_under = ratio > warn_ratio_under
+        ## Under True/False
+        ratio_under = ratio < warn_ratio_under
+        ratio_under = ratio < warn_ratio_under
+        # Get data
+        ## Over data
+        ratio_over_x = x_val_data[ratio_over].tolist()
+        ratio_over_y = y_val_data[ratio_over].tolist()
+        ratio_over_resi = df['res_num'][ratio_over].astype(str).tolist()
+        ## Under data
+        ratio_under_x = x_val_data[ratio_under].tolist()
+        ratio_under_y = y_val_data[ratio_under].tolist()
+        ratio_under_resi = df['res_num'][ratio_under].astype(str).tolist()
+        print ratio_under_y
+
         # Create figure
         f, ax = plt.subplots(1, figsize=(8, 8))
         df.plot(ax=ax, x=x_val_id, y=y_val_id, kind='scatter')
-        # Create line
-        #ax = plt.gca()
+        # Create warning 
+        ## Over
+        for x, y, s in zip(ratio_over_x, ratio_over_y, ratio_over_resi):
+            ax.text(x, y, s)
+        ## Over
+        for x, y, s in zip(ratio_under_x, ratio_under_y, ratio_under_resi):
+            ax.text(x, y, s)
+
+        # Create line by getting window size
         lim = ax.get_xlim()
         x_data_line = np.linspace(lim[0], lim[1], num=50)
         ax.plot(x_data_line, x_data_line, linestyle="-", color="k", label="scale 1/%s"%(dc_s))
@@ -244,28 +278,27 @@ for i, par in enumerate(parameters):
         #ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
         ax.legend(loc='upper left')
 
-        plt.savefig('scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        # Save figure
+        plt.savefig('plot_0_scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
         #plt.show()
         plt.close()
 
-        # Make histogram of ratio
-        x_val_data = df[x_val_id]
-        y_val_data = df[y_val_id]
-
-        ratio = x_val_data / y_val_data
         # Create figure
         f, ax = plt.subplots(1, figsize=(8, 4))
         ax.hist(ratio, bins=50, label="%s %s"%(x_val_id, y_val_id))
         ax.legend(loc='upper right')
 
-        plt.savefig('hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        # Save figure
+        plt.savefig('plot_0_hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
         #plt.show()
         plt.close()
 
     # Try matrix plot. Drop everyting, except data points
-    #df_m = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids, axis=1)
+    df_m = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids, axis=1)
     #print df_m.info()
-    #scatter_matrix(df_m, alpha=0.2, figsize=(6, 6), diagonal='kde')
+    scatter_matrix(df_m, alpha=0.2, figsize=(6, 6), diagonal='kde')
+    plt.savefig('plot_0_scattermatrix_%s.png'%(par))
+    plt.close()
     #plt.show()
 
 # Merge data frames
@@ -303,7 +336,7 @@ dfg = dfg.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_
 
 g = pairplot(dfg, hue="param", diag_kind='kde')
 g.fig.set_size_inches(8, 8)
-plt.savefig('pairplot.png')
+plt.savefig('plot_0_pairplot.png')
 
 #plt.show()
 plt.close()
