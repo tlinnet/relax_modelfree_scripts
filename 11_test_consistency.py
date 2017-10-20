@@ -163,9 +163,9 @@ col_n = ['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name', 'value', 'e
 skiprows = 3
 
 # Define the parameters
-#parameters = ['j0', 'f_eta', 'f_r2']
+parameters = ['j0', 'f_eta', 'f_r2']
 #parameters = ['f_eta']
-parameters = ['j0']
+#parameters = ['j0']
 
 # Set values for warning
 warn_ratio_over = 1.2
@@ -240,8 +240,8 @@ for i, par in enumerate(parameters):
         df[err_id] = df[err_id] * 1./float(dc_s)
         print("Scaling parameter: %s with 1/%s"%(par, dc_s))
 
-    # Collect merged dataframe
-    dfg_frames.append(df.copy())
+    # Assign param
+    df = df.assign(param=par)
 
     # Plot single graphs of combinations of indexes.
     for xi, yi in itertools.combinations(range(len(val_ids[i])), 2):
@@ -337,6 +337,7 @@ for i, par in enumerate(parameters):
         # Collect id, and add to dataframe
         diff_id = "%s_%s"%(x_val_id, y_val_id)
         diff_ids[i].append(diff_id)
+
         # Append to dataframe
         df[diff_id] = v_d
 
@@ -419,9 +420,21 @@ for i, par in enumerate(parameters):
         plt.close()
         #plt.show()
 
+    # Collect merged dataframe
+    dfg_frames.append(df.copy())
+
+
 # Merge data frames
 for i, par in enumerate(parameters):
-    dfi = dfg_frames[i]
+    # Get diff id
+    diff_id = diff_ids[i]
+
+    # Get dataframe
+    dfi = dfg_frames[i].copy()
+
+    # Drop diff ids
+    dfi = dfi.drop(diff_id, axis=1)
+
     # Rename
     val_ids_new = []
     err_ids_new = []
@@ -438,8 +451,6 @@ for i, par in enumerate(parameters):
 
         # Rename
         dfi.rename(columns={val_id_prev: val_id, err_id_prev: err_id}, inplace=True)
-        # Add the param to column
-        dfi = dfi.assign(param=par)
 
     # Merge downwards
     if i == 0:
@@ -452,12 +463,13 @@ for i, par in enumerate(parameters):
 dfg = dfg.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids_new, axis=1)
 #print dfg.info()
 
-# Make pairplo
+# Make pairplot
 g = pairplot(dfg, hue="param", diag_kind='kde')
 g.fig.set_size_inches(8, 8)
 plt.savefig('plot_0_pairplot.png')
 #plt.show()
 plt.close()
+
 """
 file_name = "plot_txt_files.py"
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_frq, force=True)
