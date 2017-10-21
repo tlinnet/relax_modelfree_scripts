@@ -1,9 +1,12 @@
 # Python module imports.
 from time import asctime, localtime
-import os
+import os, sys, stat
 
 # relax module imports.
 from auto_analyses.dauvergne_protocol import dAuvergne_protocol
+from pipe_control import pipes, relax_data
+import lib.io
+import lib.plotting.grace
 
 # Set up the data pipe.
 #######################
@@ -63,3 +66,508 @@ state.save(state=var+'_ini.bz2', dir=results_dir, force=True)
 # In folder "result_10" open "result_10_ini.bz2"
 # View -> Data pipe editor
 # Right click on pipe, and select "Associate with a new auto-analysis"
+
+
+#############################################################################
+# Automatic first consistency test with 3 Monte-Carlo simulations
+#############################################################################
+# Read the pipe info
+pipe.display()
+pipe_name = pipes.cdp_name()
+pipe_bundle = pipes.get_bundle(pipe_name)
+
+# Define out dir
+MC_NUM = 3
+out_dir = "consistency_MC_%i"%(MC_NUM)
+write_results_dir = results_dir + os.sep + out_dir
+
+# Show the current_data
+relax_data_ids = relax_data.get_ids()
+d_dic = {}
+d_dic['spec_frq_list'] = []
+d_dic['spec_frq_data'] = {}
+
+print("relax_data.get_ids() : %s"% relax_data_ids )
+for ri_id in relax_data_ids:
+    #print("relax_data id: %s, type: %s, spectrometer_frq[Hz]: %s" %(ri_id, cdp.ri_type[ri_id], cdp.spectrometer_frq[ri_id]) )
+    # Test if this is the first data
+    if cdp.spectrometer_frq[ri_id] not in d_dic['spec_frq_list']:
+        # Assign to list
+        d_dic['spec_frq_list'].append(cdp.spectrometer_frq[ri_id])
+        # Make dic structure
+        d_dic['spec_frq_data'][cdp.spectrometer_frq[ri_id]] = {}
+        d_dic['spec_frq_data'][cdp.spectrometer_frq[ri_id]]['ri_ids_types'] = []
+        d_dic['spec_frq_data'][cdp.spectrometer_frq[ri_id]]['ri_types'] = []
+    # Assign data
+    d_dic['spec_frq_data'][cdp.spectrometer_frq[ri_id]]['ri_ids_types'].append([cdp.ri_type[ri_id], ri_id])
+    d_dic['spec_frq_data'][cdp.spectrometer_frq[ri_id]]['ri_types'].append(cdp.ri_type[ri_id])
+
+# Do the consistency tests per spectrometer_frq:
+print("\nNow doing consistency tests per spectrometer_frq:")
+print("###################################################")
+for spec_frq in d_dic['spec_frq_list']:
+    print("\nFor spectrometer_frq[Hz]: %s" % spec_frq)
+    #print(d_dic['spec_frq_data'][spec_frq]['ri_types'])
+    print("Type and id: %s"% d_dic['spec_frq_data'][spec_frq]['ri_ids_types'] )
+
+    # Extract types
+    ri_types = d_dic['spec_frq_data'][spec_frq]['ri_types']
+    # Test if all types are present
+    test = ['R1', 'R2', 'NOE']
+    if not all(x in ri_types for x in test):
+        print("sf: %s, Missing either type %s in %s"%(spec_frq, test, ri_types))
+        continue
+
+    # Copy the current data pipe
+    frq_short = "%.0f_MHz" % (spec_frq/1e6)
+    pipe_name_ct = "%s_%s" %("consistency", frq_short)
+    pipe.copy(pipe_from=pipe_name, pipe_to=pipe_name_ct, bundle_to=pipe_bundle)
+    pipe.switch(pipe_name=pipe_name_ct)
+    pipe.change_type(pipe_type='ct')
+    print("Current pipe:", pipes.cdp_name())
+
+    # Set the frequency.
+    consistency_tests.set_frq(frq=spec_frq)
+
+    # Set the angle between the 15N-1H vector and the principal axis of the 15N chemical shift tensor
+    # FIXME: Where does this value come from???
+    #print("Enter the angle between the 15N-1H vector and the principal axis of the 15N chemical shift tensor")
+    val_orientation = "15.7"
+    #val_orientation = raw_input("orientation=%s:"%val_orientation) or val_orientation
+    val_orientation = float(val_orientation)
+    value.set(val=val_orientation, param='orientation')
+
+    # Set the approximate correlation time.
+    # FIXME: Where does this value come from???
+    #print("Enter the approximate correlation time, 'tc'")
+    val_tc = "13e-9"
+    #val_tc = raw_input("Default val=%s:"%val_tc) or val_tc
+    val_tc = float(val_tc)
+    value.set(val=val_tc, param='tc')
+
+    # Consistency tests.
+    minimise.calculate()
+
+    # Monte Carlo simulations.
+    #val_mc= "3"
+    #print("Enter the number of Monte-Carlo simulations. 500 is standard. 3 for fast run.")
+    #val_mc = raw_input("MC_NUM=%s:"%val_mc) or val_mc
+    #val_mc =int(val_mc)
+
+    monte_carlo.setup(number=MC_NUM)
+    #monte_carlo.setup(number=val_mc)
+    monte_carlo.create_data()
+    minimise.calculate()
+    monte_carlo.error_analysis()
+
+    # Outdir
+    pf = "_"+frq_short
+
+    # Create grace files.
+    grace.write(y_data_type='j0', file='j0%s.agr'%pf, dir=write_results_dir, force=True)
+    grace.write(y_data_type='f_eta', file='f_eta%s.agr'%pf, dir=write_results_dir, force=True)
+    grace.write(y_data_type='f_r2', file='f_r2%s.agr'%pf,  dir=write_results_dir, force=True)
+
+    # Create value files
+    value.write(param='j0', file='j0%s.txt'%pf, dir=write_results_dir, force=True)
+    value.write(param='f_eta', file='f_eta%s.txt'%pf, dir=write_results_dir, force=True)
+    value.write(param='f_r2', file='f_r2%s.txt'%pf,  dir=write_results_dir, force=True)
+
+    # Write a python "grace to PNG/EPS/SVG..." conversion script.
+    # Open the file for writing.
+    file_name = "grace2images.py"
+    write_results_dir_grace = write_results_dir
+    file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_grace, force=True)
+    # Write the file.
+    lib.plotting.grace.script_grace2images(file=file)
+    file.close()
+    file_path = lib.io.get_file_path(file_name, write_results_dir_grace)
+    os.chmod(file_path, stat.S_IRWXU|stat.S_IRGRP|stat.S_IROTH)
+
+    # Finish.
+    results.write(file='results%s'%pf, dir=write_results_dir, force=True)
+    state.save('state%s'%pf, dir=write_results_dir, force=True)
+
+pyt_script = r"""
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
+from glob import glob
+import itertools
+import decimal
+import numpy as np
+from pandas.plotting import scatter_matrix
+from seaborn import pairplot, despine
+
+# All files has this column name
+col_n = ['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name', 'value', 'error']
+# All files should skip 3
+skiprows = 3
+
+# Define the parameters
+parameters = ['j0', 'f_eta', 'f_r2']
+#parameters = ['f_eta']
+#parameters = ['j0']
+
+# Set values for warning
+warn_ratio_over = 1.2
+warn_ratio_under = 0.8
+warn_std_factor = 3.0 # 1.0: 32% outside, 2.0: 5% outside, 3.0: 0.3% outside
+
+# Set bins
+bins = 50
+
+# Collect data
+dfg_frames = []
+file_ids = []
+
+# Collect ids
+val_ids = []
+err_ids = []
+diff_ids = []
+for i, par in enumerate(parameters):
+    flist = glob("%s_*.txt"%par)
+
+    # Get the files
+    file_ids.append([])
+    val_ids.append([])
+    err_ids.append([])
+    diff_ids.append([])
+
+    df_frames = []
+    for j,f in enumerate(flist):
+        # Get the file_ids
+        file_id = f.split("%s_"%par)[-1].split(".txt")[0]
+        file_ids[i].append(file_id)
+
+        # Read csv
+        df_par = pd.read_csv(f, delim_whitespace=True, skiprows=skiprows, names=col_n)
+        # Replace 'None' with NaN 
+        df_par = df_par.mask(df_par.astype(object).eq('None'))
+        # Then drop 
+        df_par = df_par.dropna(axis=0, how='all', subset=['value'])
+
+        # Get scaling
+        df_min = df_par['value'].min()
+        dc = str(decimal.Decimal(df_min))
+        if "E" in dc:
+            dc_s = "1e"+dc.split("E")[-1]
+        else:
+            dc_s = 1
+
+        # Convert to numeric
+        df_par = df_par.apply(pd.to_numeric, errors='ignore')
+        # Rename
+        val_id = '%s_%s'%(par, file_id)
+        val_ids[i].append(val_id)
+        err_id = 'err_%s_%s'%(par, file_id)
+        err_ids[i].append(err_id)
+
+        df_par.rename(columns={'value': val_id, 'error': err_id}, inplace=True)
+
+        # Append to frames
+        df_frames.append(df_par)
+
+    # Merge data frames
+    df = df_frames[0].merge(df_frames[1], left_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], right_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], how='outer')
+    if len(flist) > 2:
+        for k in range(2, len(flist)):
+            df = df.merge(df_frames[k], left_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], right_on=['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name'], how='outer')
+    #print df
+    #print df.info()
+
+    # Scale values
+    for val_id, err_id in zip(val_ids[i], err_ids[i]):
+        df[val_id] = df[val_id] * 1./float(dc_s)
+        df[err_id] = df[err_id] * 1./float(dc_s)
+        print("Scaling parameter: %s with 1/%s"%(par, dc_s))
+
+    # Assign param
+    df = df.assign(param=par)
+
+    # Plot single graphs of combinations of indexes.
+    for xi, yi in itertools.combinations(range(len(val_ids[i])), 2):
+        # Get ids
+        x_val_id = val_ids[i][xi]
+        y_val_id = val_ids[i][yi]
+        x_err_id = err_ids[i][xi]
+        y_err_id = err_ids[i][yi]
+
+        # Get val
+        x_val_data = df[x_val_id]
+        y_val_data = df[y_val_id]
+        # Make ratio
+        ratio = y_val_data / x_val_data
+        # Get err
+        x_err_data = df[x_err_id]
+        y_err_data = df[y_err_id]
+
+        # Make warning labels
+        ## Over True/False
+        ratio_over = ratio > warn_ratio_over
+        ratio_under = ratio > warn_ratio_under
+        ## Under True/False
+        ratio_under = ratio < warn_ratio_under
+        ratio_under = ratio < warn_ratio_under
+        # Get data
+        ## Over data
+        ratio_over_x = x_val_data[ratio_over].tolist()
+        ratio_over_y = y_val_data[ratio_over].tolist()
+        ratio_over_resi = df['res_num'][ratio_over].astype(str).tolist()
+        ## Under data
+        ratio_under_x = x_val_data[ratio_under].tolist()
+        ratio_under_y = y_val_data[ratio_under].tolist()
+        ratio_under_resi = df['res_num'][ratio_under].astype(str).tolist()
+
+        # Create figure
+        f, ax = plt.subplots(1, figsize=(8, 8))
+        df.plot(ax=ax, x=x_val_id, y=y_val_id, kind='scatter')
+        # Create warning 
+        ## Over
+        for x, y, s in zip(ratio_over_x, ratio_over_y, ratio_over_resi):
+            ax.text(x, y, s)
+        ## Under
+        for x, y, s in zip(ratio_under_x, ratio_under_y, ratio_under_resi):
+            ax.text(x, y, s)
+
+        # Create line by getting window size
+        lim = ax.get_xlim()
+        x_data_line = np.linspace(lim[0], lim[1], num=50)
+        ax.plot(x_data_line, x_data_line, linestyle="-", color="k", label="scale 1/%s"%(dc_s))
+        #box = ax.get_position()
+        #ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        #ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax.legend(loc='upper left')
+        # Save figure
+        plt.savefig('plot_0_scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+        # Create histogram
+        # Create figure
+        f, ax = plt.subplots(1, figsize=(8, 4))
+        ax.hist(ratio, bins=bins, normed=True, label="%s %s"%(x_val_id, y_val_id))
+        ax.legend(loc='upper left')
+        # Get lim and set equal
+        max_lim = np.max(np.abs( np.asarray(ax.get_xlim())-1 ))
+        ax.set_xlim(1 - max_lim, 1 + max_lim)
+
+        # Save figure
+        plt.savefig('plot_0_hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+        # For the following calculations, see:
+        # Linnet, T.E., Teilum, K. "Non-uniform sampling of NMR relaxation data", Journal of Biomolecular NMR, 2016, 
+        # DOI: 10.1007/s10858-016-0020-6, http://dx.doi.org/10.1007/s10858-016-0020-6
+
+        # ratio normalization
+        v_g = x_val_data / x_val_data
+        v_h = y_val_data / x_val_data
+        # normalized vector uncertainties
+        v_s_g = x_err_data / x_val_data
+        v_s_h = y_err_data / x_val_data
+        # difference vector
+        v_d = v_h - v_g
+        # pooled standard deviation. These are equal: std_pool_test = np.sqrt( np.sum( v_s_g**2 + v_s_h**2 )/len(v_s_g) )
+        std_pool = np.sqrt( np.mean( np.square(v_s_g) + np.square(v_s_h) ) )
+        # mean difference. These are equal: mean_diff_test = np.dot( np.ones(len(v_d)), v_d ) / len(v_d)
+        mean_d = np.mean(v_d)
+        # standard deviation of differences
+        std_d = np.std(v_d, ddof=1)
+
+        # Collect id, and add to dataframe
+        diff_id = "%s_%s"%(x_val_id, y_val_id)
+        diff_ids[i].append(diff_id)
+
+        # Append to dataframe
+        df[diff_id] = v_d
+
+        # Create std warning 
+        ## Under True/False
+        std_warn_sel = ( v_d > mean_d + warn_std_factor*std_d ) | ( v_d < mean_d - warn_std_factor*std_d )
+        std_warn_x = v_d[std_warn_sel].tolist()
+        std_warn_resi = df['res_num'][std_warn_sel].astype(str).tolist()
+
+        # Create figure for scatter
+        f, ax = plt.subplots(1, figsize=(8, 8))
+        # Plot
+        ax.scatter(v_d, np.zeros(len(v_h)), label="%s %s"%(x_val_id, y_val_id))
+        ax.scatter(mean_d, 0, label="Mean of differences")
+        ax.scatter([mean_d + std_d, mean_d - std_d], [0.1, 0.1], label="Mean +/- 1*std")
+        ax.scatter([mean_d + 2*std_d, mean_d - 2*std_d], [0.1, 0.1], label="Mean +/- 2*std")
+        ax.scatter([mean_d + 3*std_d, mean_d - 3*std_d], [0.1, 0.1], label="Mean +/- 3*std")
+        ax.set_ylabel("Ratio normalized differences")
+        ax.legend(loc='upper left')
+        ax.set_ylim(-1, 1)
+        # Create warning 
+        ## Over
+        for k, (x, s) in enumerate(zip(std_warn_x, std_warn_resi)):
+            ax.text(x, -0.1-k*0.1, s)
+
+        # Get lim and set equal
+        max_lim = np.max(np.abs( ax.get_xlim() ))
+        ax.set_xlim(-1*max_lim, max_lim)
+
+        # Save figure
+        plt.savefig('plot_1_scatter_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+        # Create figure for histogram
+        f, ax = plt.subplots(1, figsize=(8, 8))
+        ax.hist(v_d, bins=bins, normed=True, label="%s %s"%(x_val_id, y_val_id))
+        # Set same x_lim and set equal
+        ax.set_xlim(-1*max_lim, max_lim)
+
+        # Plot normal distribution
+        x_norm = np.linspace(-1*max_lim, max_lim, 500)
+        # Library
+        y_norm = mlab.normpdf(x_norm, mean_d, std_d)
+        plt.plot(x_norm, y_norm, label="normpdf")
+        # Manually
+        #y_norm_1 = np.exp(-np.power(x_norm - mean_d, 2.) / (2 * np.power(std_d, 2.)))
+        #plt.plot(x_norm, y_norm_1, label="norm 1")
+        #y_norm_2 = y_norm_1 * (1.0/(std_d * np.sqrt(2.0 * np.pi))) 
+        #plt.plot(x_norm, y_norm_2, label="norm 2")
+
+        # Create the comparison normal distribution
+        y_norm_pool = mlab.normpdf(x_norm, 0.0, std_pool)
+        #y_norm_pool = mlab.normpdf(x_norm, mean_d, std_pool)
+        plt.plot(x_norm, y_norm_pool, label="normpdf pool")
+
+        # Save figure
+        ax.legend(loc='upper left')
+        plt.savefig('plot_1_hist_%s_%s_%s.png'%(par, x_val_id, y_val_id))
+        #plt.show()
+        plt.close()
+
+    # Try matrix plot. Drop everyting, except data points
+    df_m0 = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids[i]+diff_ids[i], axis=1)
+    #print df_m0.info()
+    scatter_matrix(df_m0, alpha=0.2, figsize=(6, 6), diagonal='kde')
+    plt.savefig('plot_0_scattermatrix_%s.png'%(par))
+    plt.close()
+    #plt.show()
+
+    # Try another matrix plot. Drop everyting, except diff points
+    if len(flist) > 2:
+        df_m1 = df.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids[i]+val_ids[i], axis=1)
+        scatter_matrix(df_m1, alpha=0.2, figsize=(6, 6), diagonal='kde')
+        ax = plt.gca()
+        # Get lim and set equal
+        max_lim = np.max(np.abs( ax.get_xlim() ))
+        ax.set_xlim(-1*max_lim, max_lim)
+        plt.savefig('plot_1_scattermatrix_%s.png'%(par))
+        plt.close()
+        #plt.show()
+
+    # Collect merged dataframe
+    dfg_frames.append(df.copy())
+
+
+# Merge data frames
+for i, par in enumerate(parameters):
+    # Get diff id
+    diff_id = diff_ids[i]
+
+    # Get dataframe
+    dfi = dfg_frames[i].copy()
+
+    # Drop diff ids
+    dfi = dfi.drop(diff_id, axis=1)
+
+    # Rename
+    val_ids_new = []
+    err_ids_new = []
+    for j, file_id in enumerate(file_ids[i]):
+        # Define previous ids
+        val_id_prev = val_ids[i][j]
+        err_id_prev = err_ids[i][j]
+
+        # Define new ids
+        val_id = 'value_%s'%file_id
+        err_id = 'error_%s'%file_id
+        val_ids_new.append(val_id)
+        err_ids_new.append(err_id)
+
+        # Rename
+        dfi.rename(columns={val_id_prev: val_id, err_id_prev: err_id}, inplace=True)
+
+    # Merge downwards
+    if i == 0:
+        dfg = dfi
+    else:
+        # Concatenate data from first run
+        dfg = pd.concat([dfg, dfi], ignore_index=True)
+
+# Drop data
+dfg = dfg.drop(['mol_name', 'res_num', 'res_name', 'spin_num', 'spin_name']+err_ids_new, axis=1)
+#print dfg.info()
+
+# Make pairplot
+g = pairplot(dfg, hue="param", diag_kind='kde')
+g.fig.set_size_inches(8, 8)
+plt.savefig('plot_0_pairplot.png')
+#plt.show()
+plt.close()
+"""
+file_name = "plot_txt_files.py"
+file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir, force=True)
+# Write the file.
+file.write(pyt_script)
+#lib.plotting.grace.script_grace2images(file=file)
+file.close()
+
+
+out_string = """############################################################################################################################################
+
+Script for consistency testing.
+Severe artifacts can be introduced if model-free analysis is performed from inconsistent multiple magnetic field datasets. 
+
+The use of simple tests as validation tools for the consistency assessment can help avoid such problems in order to extract more 
+reliable information from spin relaxation experiments. In particular, these tests are useful for detecting inconsistencies arising from R2 data. 
+
+Since such inconsistencies can yield artifactual Rex parameters within model-free analysis, these tests should be used 
+routinely prior to any analysis such as model-free calculations.
+
+This script will allow one to calculate values for the three consistency tests J(0), F_eta and F_R2. 
+
+Once this is done, qualitative analysis can be performed by comparing values obtained at different magnetic fields. 
+Correlation plots and histograms are useful tools for such comparison, such as presented in Morin & Gagne (2009a) J. Biomol. NMR, 45: 361-372.
+
+References
+==========
+The description of the consistency testing approach:
+    Morin & Gagne (2009a) Simple tests for the validation of multiple field spin relaxation data. J. Biomol. NMR, 45: 361-372. U{http://dx.doi.org/10.1007/s10858-009-9381-4}
+The origins of the equations used in the approach:
+    J(0):
+        Farrow et al. (1995) Spectral density function mapping using 15N relaxation data exclusively. J. Biomol. NMR, 6: 153-162. U{http://dx.doi.org/10.1007/BF00211779}
+    F_eta:
+        Fushman et al. (1998) Direct measurement of 15N chemical shift anisotropy in solution. J. Am. Chem. Soc., 120: 10947-10952. U{http://dx.doi.org/10.1021/ja981686m}
+    F_R2:
+        Fushman et al. (1998) Direct measurement of 15N chemical shift anisotropy in solution. J. Am. Chem. Soc., 120: 10947-10952. U{http://dx.doi.org/10.1021/ja981686m}
+A study where consistency tests were used:
+    Morin & Gagne (2009) NMR dynamics of PSE-4 beta-lactamase: An interplay of ps-ns order and us-ms motions in the active site. Biophys. J., 96: 4681-4691. U{http://dx.doi.org/10.1016/j.bpj.2009.02.068}
+
+
+Performing these simple calculations for each residue
+=====================================================
+
+* Comparing results obtained at different magnetic fields should, in the case of perfect consistency and 
+assuming the absence of conformational exchange, yield equal values independently of the magnetic field
+* avoid the potential extraction of erroneous information as well as the waste of time associated to 
+ dissecting inconsistent datasets using numerous long model-free minimisations with different subsets of data.
+* The authors prefer the use of the spectral density at zero frequency J(0) alone since it does not 
+ rely on an estimation of the global correlation time tc/tm, neither on a measure of theta, 
+ the angle between the 15N–1H vector and the principal axis of the 15N chemical shift tensor. 
+ Hence, J(0) is less likely to be affected by incorrect parameterisation of input parameters.
+"""
+
+file_name = "README.txt"
+file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir, force=True)
+# Write the file.
+file.write(out_string)
+#lib.plotting.grace.script_grace2images(file=file)
+file.close()
+print(out_string)
