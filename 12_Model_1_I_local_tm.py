@@ -43,3 +43,15 @@ dAuvergne_protocol(pipe_name=pipe_name, pipe_bundle=pipe_bundle,
    grid_inc=GRID_INC,
    mc_sim_num=MC_NUM,
    max_iter=MAX_ITER)
+
+#####
+# After local_tm, then get some info
+#####
+
+# Define out_dir
+write_results_dir = results_dir + os.sep + 'local_tm'
+
+# Get model
+value.write(param='model', file='model.txt', dir=write_results_dir, force=True)
+# Get equation
+value.write(param='equation', file='equation.txt', dir=write_results_dir, force=True)
