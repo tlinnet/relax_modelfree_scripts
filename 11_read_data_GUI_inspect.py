@@ -568,6 +568,5 @@ file_name = "README.txt"
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir, force=True)
 # Write the file.
 file.write(out_string)
-#lib.plotting.grace.script_grace2images(file=file)
 file.close()
 print(out_string)
