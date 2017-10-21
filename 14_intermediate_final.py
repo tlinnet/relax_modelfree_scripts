@@ -140,7 +140,6 @@ if ans == 'y':
         # Fix bug
         cdp.structure.structural_data[0].mol[0].file_path = '.'
 
-        outdir = os.getcwd() 
         palmer.create(dir=write_results_dir_modelfree, force=True, 
             binary='modelfree4', diff_search='none', sims=0,
             sim_type='pred', trim=0, steps=20, 
@@ -167,10 +166,6 @@ if ans == 'y':
     ans_dasha = "n"
     if ans_dasha == 'y':
         # Define write out
-        write_results_dir_modelfree = write_results_dir + os.sep + 'Modelfree4'
-
-        # Define write out
-        out = 'result_06_check_intermediate'
         write_results_dir_dasha = write_results_dir + os.sep +  + "Dasha"
         dasha.create(algor='LM', dir=write_results_dir_dasha, force=True)
 
