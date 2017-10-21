@@ -55,3 +55,5 @@ write_results_dir = results_dir + os.sep + 'local_tm'
 value.write(param='model', file='model.txt', dir=write_results_dir, force=True)
 # Get equation
 value.write(param='equation', file='equation.txt', dir=write_results_dir, force=True)
+# Get local_tm
+value.write(param='local_tm', file='local_tm.txt', dir=write_results_dir, force=True)
