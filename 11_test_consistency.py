@@ -91,7 +91,7 @@ for spec_frq in d_dic['spec_frq_list']:
     value.set(val=val_orientation, param='orientation')
 
     # Set the approximate correlation time.
-    print("Enter the approximate correlation time")
+    print("Enter the approximate correlation time, 'tc'")
     # FIXME: Where does this value come from???
     val_tc = "13e-9"
     val_tc = raw_input("Default val=%s:"%val_tc) or val_tc
