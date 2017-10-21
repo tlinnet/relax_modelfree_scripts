@@ -84,15 +84,15 @@ for spec_frq in d_dic['spec_frq_list']:
 
     # Set the angle between the 15N-1H vector and the principal axis of the 15N chemical shift tensor
     # FIXME: Where does this value come from???
-    val_orientation = "15.7"
     print("Enter the angle between the 15N-1H vector and the principal axis of the 15N chemical shift tensor")
+    val_orientation = "15.7"
     val_orientation = raw_input("orientation=%s:"%val_orientation) or val_orientation
     val_orientation = float(val_orientation)
     value.set(val=val_orientation, param='orientation')
 
     # Set the approximate correlation time.
-    print("Enter the approximate correlation time, 'tc'")
     # FIXME: Where does this value come from???
+    print("Enter the approximate correlation time, 'tc'")
     val_tc = "13e-9"
     val_tc = raw_input("Default val=%s:"%val_tc) or val_tc
     val_tc = float(val_tc)
@@ -113,10 +113,6 @@ for spec_frq in d_dic['spec_frq_list']:
     monte_carlo.error_analysis()
 
     # Define output dir
-    #write_results_dir_frq = write_results_dir + os.sep + frq_short+"_MC_%i"%(val_mc)
-    # Post-fix to file names
-    #pf = ""
-
     write_results_dir_frq = write_results_dir + os.sep + "MC_%i"%(val_mc)
     pf = "_"+frq_short
 
@@ -146,7 +142,6 @@ for spec_frq in d_dic['spec_frq_list']:
     state.save('state%s'%pf, dir=write_results_dir_frq, force=True)
 
 pyt_script = r"""
-
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
@@ -469,7 +464,6 @@ g.fig.set_size_inches(8, 8)
 plt.savefig('plot_0_pairplot.png')
 #plt.show()
 plt.close()
-
 """
 file_name = "plot_txt_files.py"
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_frq, force=True)
@@ -515,7 +509,12 @@ Performing these simple calculations for each residue
 
 * Comparing results obtained at different magnetic fields should, in the case of perfect consistency and 
 assuming the absence of conformational exchange, yield equal values independently of the magnetic field
-
+* avoid the potential extraction of erroneous information as well as the waste of time associated to 
+ dissecting inconsistent datasets using numerous long model-free minimisations with different subsets of data.
+* The authors prefer the use of the spectral density at zero frequency J(0) alone since it does not 
+ rely on an estimation of the global correlation time tc/tm, neither on a measure of theta, 
+ the angle between the 15N–1H vector and the principal axis of the 15N chemical shift tensor. 
+ Hence, J(0) is less likely to be affected by incorrect parameterisation of input parameters.
 """
 
 file_name = "README.txt"
