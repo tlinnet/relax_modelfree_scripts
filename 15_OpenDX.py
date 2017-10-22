@@ -109,14 +109,15 @@ dxfl.append('' + '\n')
 dxfl.append('dx.map(params=%s, #The parameters to be mapped.'%(params_sel) + '\n') 
 dxfl.append('    map_type="Iso3D", #The type of map to create.' + '\n') 
 dxfl.append('    spin_id="%s", #The spin ID string.'%(sel_spin[0]) + '\n') 
-dxfl.append('    inc=20, #The number of increments to map in each dimension.  This value controls the resolution ofthe map.' + '\n') 
+dxfl.append('    inc=10, #The number of increments to map in each dimension.  This value controls the resolution ofthe map.' + '\n') 
 dxfl.append('    lower=None, # The lower bounds of the space.' + '\n')
 dxfl.append('    upper=None, # The upper bounds of the space.' + '\n')
 dxfl.append('    axis_incs=5, #  The number of increments or ticks displaying parameter values along the axes of the OpenDX plot.' + '\n')
 dxfl.append('    file_prefix="%s", #The file name. All the output files are prefixed with this name.'%(file_name_dx) + '\n')
 dxfl.append('    dir="%s", # The directory to output files to.'%(write_results_dir_dx) + '\n')
 dxfl.append('    point=None, # [x, y, z] This argument allows specific points in the optimisation space to be displayed as coloured spheres.' + '\n')
-dxfl.append('    point_file="point" # The name of that the point output files will be prefixed with' + '\n')
+dxfl.append('    point_file=None, # "point" The name of that the point output files will be prefixed with' + '\n')
+dxfl.append('    create_par_file=False' + '\n')
 dxfl.append('    )' + '\n')
 dxfl.append('' + '\n')
 dxfl.append('' + '\n')
@@ -127,7 +128,7 @@ dxfl.append('' + '\n')
 dxfl.append('' + '\n')
 
 # Define write out
-file_name = file_name_dx + ".py"
+file_name = "gen_"+file_name_dx + ".py"
 file = lib.io.open_write_file(file_name=file_name, dir=write_results_dir_dx, force=True)
 # Write the file.
 for line in dxfl:
