@@ -179,7 +179,7 @@ val_ids = []
 err_ids = []
 diff_ids = []
 for i, par in enumerate(parameters):
-    flist = glob("%s_*.txt"%par)
+    flist = sorted(glob("%s_*.txt"%par))
 
     # Get the files
     file_ids.append([])
