@@ -248,7 +248,7 @@ pyml.append("modes = ['s2', 's2f', 's2s', 'amp_fast', 'amp_slow', 'te', 'tf', 't
 pyml.append('fdir = "./"' + '\n')
 pyml.append('python' + '\n')
 pyml.append('' + '\n')
-pyml.append('# File placement' + '\n')
+pyml.append('# File replacement' + '\n')
 pyml.append('if True:' + '\n')
 pyml.append('    for i, mode in enumerate(modes):' + '\n')
 pyml.append('        # Make name' + '\n')
@@ -367,7 +367,7 @@ file.close()
 #Get chi2 per iteration
 
 if ans != 'y':
-    ans = raw_input("Should I the find chi2 value per iteraion?[n]:") or "n"
+    ans = raw_input("Should I the find chi2 value per iteration?[n]:") or "n"
 
 if ans == 'y':
     dir_list = os.listdir(results_dir)
