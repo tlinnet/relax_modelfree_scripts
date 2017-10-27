@@ -55,6 +55,7 @@ load vect_dist.pdb
 # Visualize
 hide everything, protein
 show cartoon, protein
+show surface, vect_dist
 """
 
 file_name = "0_0_apply_all_pymol_commands.pml"
